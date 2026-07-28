@@ -1,0 +1,23 @@
+import { z } from "zod";
+
+export const teamRoleSchema = z.enum(["MEMBER", "SKILL_CREATOR", "TEAM_ADMIN"]);
+export type TeamRole = z.infer<typeof teamRoleSchema>;
+
+export const loginInputSchema = z.object({
+  email: z.string().email(),
+  password: z.string().min(8),
+});
+export const createProjectInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+});
+export const createTaskInputSchema = z.object({
+  title: z.string().trim().min(1).max(160),
+});
+export const createMessageInputSchema = z.object({
+  content: z.string().trim().min(1).max(20_000),
+});
+
+export type LoginInput = z.infer<typeof loginInputSchema>;
+export type CreateProjectInput = z.infer<typeof createProjectInputSchema>;
+export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
+export type CreateMessageInput = z.infer<typeof createMessageInputSchema>;
