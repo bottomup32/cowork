@@ -57,6 +57,7 @@ model TeamMembership {
   createdAt DateTime @default(now())
 
   @@id([teamId, userId])
+  @@index([userId, teamId])
 }
 
 model Project {
@@ -82,6 +83,7 @@ model ProjectMember {
   createdAt DateTime @default(now())
 
   @@id([projectId, userId])
+  @@index([userId, projectId])
 }
 
 model Task {

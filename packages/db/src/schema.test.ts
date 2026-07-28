@@ -2,6 +2,7 @@ import { afterAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'node:url';
+import { readFile } from 'node:fs/promises';
 
 import { createPrismaClient } from './client-factory.js';
 import { MessageRole } from './generated/client.js';
@@ -92,5 +93,12 @@ describe('team, project, task, and conversation persistence', () => {
     expect(await prisma.team.count({ where: { id: DEMO_TEAM_ID } })).toBe(1);
     expect(await prisma.project.count({ where: { id: DEMO_PROJECT_ID } })).toBe(1);
     expect(await prisma.user.count({ where: { id: { in: [DEMO_USER_ALICE_ID, DEMO_USER_BOB_ID] } } })).toBe(2);
+  });
+
+  it('declares reverse membership indexes for user-scoped authorization checks', async () => {
+    const schema = await readFile(fileURLToPath(new URL('../prisma/schema.prisma', import.meta.url)), 'utf8');
+
+    expect(schema).toContain('@@index([userId, teamId])');
+    expect(schema).toContain('@@index([userId, projectId])');
   });
 });

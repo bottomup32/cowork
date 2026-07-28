@@ -3,20 +3,18 @@ import cors from "@fastify/cors";
 
 import { authPlugin } from "./plugins/auth.js";
 import { registerAuthRoutes, type AuthDatabase } from "./modules/auth/routes.js";
+import { registerProjectRoutes, type ProjectDatabase } from "./modules/projects/routes.js";
+import { registerTaskRoutes, type TaskDatabase } from "./modules/tasks/routes.js";
+
+export type AppDatabase = AuthDatabase & ProjectDatabase & TaskDatabase;
 
 export interface BuildAppOptions {
-  database?: AuthDatabase;
+  database?: AppDatabase;
   jwtSecret?: string;
   webOrigin?: string;
 }
 
-const unavailableDatabase: AuthDatabase = {
-  user: {
-    async findUnique() {
-      throw new Error("Database is required for authentication routes");
-    },
-  },
-} as unknown as AuthDatabase;
+const unavailableDatabase = new Proxy({}, { get: () => new Proxy({}, { get: () => () => { throw new Error("Database is required for application routes"); } }) }) as AppDatabase;
 
 export function buildApp(options: BuildAppOptions = {}) {
   const app = Fastify({ logger: false });
@@ -29,6 +27,8 @@ export function buildApp(options: BuildAppOptions = {}) {
   app.get("/health", () => ({ status: "ok", service: "api" }));
   void app.register((instance, _options, done) => {
     registerAuthRoutes(instance, options.database ?? unavailableDatabase);
+    registerProjectRoutes(instance, options.database ?? unavailableDatabase);
+    registerTaskRoutes(instance, options.database ?? unavailableDatabase);
     done();
   });
 
