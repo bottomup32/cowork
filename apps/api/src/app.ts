@@ -5,13 +5,17 @@ import { authPlugin } from "./plugins/auth.js";
 import { registerAuthRoutes, type AuthDatabase } from "./modules/auth/routes.js";
 import { registerProjectRoutes, type ProjectDatabase } from "./modules/projects/routes.js";
 import { registerTaskRoutes, type TaskDatabase } from "./modules/tasks/routes.js";
+import { registerChatRoutes, type ChatDatabase } from "./modules/chat/routes.js";
+import { DeterministicFakeAgent, type AgentPort } from "@cowork/domain";
 
-export type AppDatabase = AuthDatabase & ProjectDatabase & TaskDatabase;
+export type AppDatabase = AuthDatabase & ProjectDatabase & TaskDatabase & ChatDatabase;
 
 export interface BuildAppOptions {
   database?: AppDatabase;
   jwtSecret?: string;
   webOrigin?: string;
+  agent?: AgentPort;
+  agentReplyTimeoutMs?: number;
 }
 
 const unavailableDatabase = new Proxy({}, { get: () => new Proxy({}, { get: () => () => { throw new Error("Database is required for application routes"); } }) }) as AppDatabase;
@@ -29,6 +33,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     registerAuthRoutes(instance, options.database ?? unavailableDatabase);
     registerProjectRoutes(instance, options.database ?? unavailableDatabase);
     registerTaskRoutes(instance, options.database ?? unavailableDatabase);
+    registerChatRoutes(instance, options.database ?? unavailableDatabase, options.agent ?? new DeterministicFakeAgent(), options.agentReplyTimeoutMs ?? 30_000);
     done();
   });
 

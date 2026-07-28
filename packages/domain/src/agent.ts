@@ -2,6 +2,7 @@ export interface AgentReplyInput {
   taskId: string;
   userId: string;
   message: string;
+  signal?: AbortSignal;
 }
 
 export interface AgentReply {

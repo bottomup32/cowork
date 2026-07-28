@@ -75,7 +75,7 @@ export function registerTaskRoutes(app: FastifyInstance, database: TaskDatabase)
           },
         },
       },
-      select: { ...publicTask, conversation: { select: { messages: { orderBy: { createdAt: "asc" }, select: { id: true, role: true, content: true, createdAt: true } } } } },
+      select: { ...publicTask, conversation: { select: { messages: { orderBy: [{ createdAt: "asc" }, { id: "asc" }], select: { id: true, role: true, content: true, createdAt: true } } } } },
     });
     if (!task) return reply.code(404).send({ error: "TASK_NOT_FOUND" });
     return task;
