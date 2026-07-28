@@ -2,7 +2,10 @@
   "name": "@cowork/db",
   "private": true,
   "type": "module",
-  "exports": "./src/client.ts",
+  "exports": {
+    ".": "./src/client.ts",
+    "./client-factory": "./src/client-factory.ts"
+  },
   "scripts": {
     "build": "tsc -p tsconfig.json --noEmit",
     "lint": "tsc -p tsconfig.json --noEmit",
