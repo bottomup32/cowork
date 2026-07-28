@@ -1,0 +1,13 @@
+.worktrees/
+node_modules/
+.turbo/
+.next/
+dist/
+coverage/
+playwright-report/
+test-results/
+.env
+.env.local
+*.log
+packages/db/src/generated/
+data/
