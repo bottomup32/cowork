@@ -1,0 +1,25 @@
+{
+  "name": "team-cowork",
+  "private": true,
+  "packageManager": "pnpm@11.9.0",
+  "scripts": {
+    "build": "turbo run build",
+    "dev": "turbo run dev --parallel",
+    "lint": "turbo run lint",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "test:e2e": "playwright test",
+    "format": "prettier --write .",
+    "db:generate": "pnpm --filter @cowork/db db:generate",
+    "db:migrate": "pnpm --filter @cowork/db db:migrate",
+    "db:seed": "pnpm --filter @cowork/db db:seed"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.0.0",
+    "prettier": "^3.0.0",
+    "turbo": "^2.0.0",
+    "typescript": "^5.0.0",
+    "vitest": "^3.0.0"
+  }
+}
