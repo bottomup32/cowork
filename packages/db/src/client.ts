@@ -12,8 +12,8 @@ if (!connectionString) {
 
 const adapter = new PrismaPg({ connectionString });
 
-export { PrismaClient } from './generated/client.js';
-
 import { PrismaClient } from './generated/client.js';
+
+export * from './generated/client.js';
 
 export const prisma = new PrismaClient({ adapter });

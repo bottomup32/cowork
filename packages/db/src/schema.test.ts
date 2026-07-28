@@ -1,6 +1,6 @@
 import { afterAll, describe, expect, it } from 'vitest';
 
-import { prisma } from './client.js';
+import { MessageRole, prisma } from './client.js';
 
 describe('team, project, task, and conversation persistence', () => {
   afterAll(async () => {
@@ -16,6 +16,8 @@ describe('team, project, task, and conversation persistence', () => {
   });
 
   it('persists a team admin, project member, private task, and its conversation', async () => {
+    expect(MessageRole.USER).toBe('USER');
+
     const user = await prisma.user.create({
       data: { email: 'schema@example.com', displayName: 'Schema User', passwordHash: 'hash' },
     });
