@@ -1,6 +1,7 @@
-import { PrismaPg } from '@prisma/adapter-pg';
 import { config } from 'dotenv';
 import { fileURLToPath } from 'node:url';
+
+import { createPrismaClient } from './client-factory.js';
 
 config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true });
 
@@ -10,12 +11,7 @@ if (!connectionString) {
   throw new Error('DATABASE_URL is required');
 }
 
-import { PrismaClient } from './generated/client.js';
-
+export * from './client-factory.js';
 export * from './generated/client.js';
-
-export function createPrismaClient(databaseUrl: string) {
-  return new PrismaClient({ adapter: new PrismaPg({ connectionString: databaseUrl }) });
-}
 
 export const prisma = createPrismaClient(connectionString);

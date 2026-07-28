@@ -1,8 +1,13 @@
 import { afterAll, describe, expect, it } from 'vitest';
 import { randomUUID } from 'node:crypto';
+import { config } from 'dotenv';
+import { fileURLToPath } from 'node:url';
 
-import { createPrismaClient, MessageRole } from './client.js';
-import { seedDemoData } from './seed.js';
+import { createPrismaClient } from './client-factory.js';
+import { MessageRole } from './generated/client.js';
+import { DEMO_PROJECT_ID, DEMO_TEAM_ID, DEMO_USER_ALICE_ID, DEMO_USER_BOB_ID, seedDemoData } from './seed.js';
+
+config({ path: fileURLToPath(new URL('../../../.env', import.meta.url)), quiet: true });
 
 const testDatabaseUrl = process.env.TEST_DATABASE_URL;
 
@@ -14,6 +19,8 @@ const identifier = randomUUID();
 const email = `schema-${identifier}@example.com`;
 const teamName = `Schema Team ${identifier}`;
 const sentinelEmail = `seed-sentinel-${identifier}@example.com`;
+const sentinelId = `seed-sentinel-${identifier}`;
+const unrelatedTeamId = `unrelated-team-${identifier}`;
 const prisma = createPrismaClient(testDatabaseUrl);
 
 describe('team, project, task, and conversation persistence', () => {
@@ -26,11 +33,9 @@ describe('team, project, task, and conversation persistence', () => {
     await prisma.project.deleteMany({ where: { team: { name: teamName } } });
     await prisma.team.deleteMany({ where: { name: teamName } });
     await prisma.user.deleteMany({ where: { email } });
-    const demoTeam = await prisma.team.findFirst({ where: { name: 'Demo Accounting' } });
-    if (demoTeam) {
-      await prisma.team.delete({ where: { id: demoTeam.id } });
-    }
-    await prisma.user.deleteMany({ where: { email: { in: ['alice@example.com', 'bob@example.com', sentinelEmail] } } });
+    await prisma.project.deleteMany({ where: { id: DEMO_PROJECT_ID } });
+    await prisma.team.deleteMany({ where: { id: { in: [DEMO_TEAM_ID, unrelatedTeamId] } } });
+    await prisma.user.deleteMany({ where: { id: { in: [DEMO_USER_ALICE_ID, DEMO_USER_BOB_ID, sentinelId] } } });
     await prisma.$disconnect();
   });
 
@@ -75,15 +80,17 @@ describe('team, project, task, and conversation persistence', () => {
 
   it('seeds demo data idempotently without deleting unrelated rows', async () => {
     await prisma.user.create({
-      data: { email: sentinelEmail, displayName: 'Seed Sentinel', passwordHash: 'hash' },
+      data: { id: sentinelId, email: sentinelEmail, displayName: 'Seed Sentinel', passwordHash: 'hash' },
     });
+    await prisma.team.create({ data: { id: unrelatedTeamId, name: 'Demo Accounting' } });
 
     await seedDemoData(prisma);
     await seedDemoData(prisma);
 
-    expect(await prisma.user.count({ where: { email: sentinelEmail } })).toBe(1);
-    expect(await prisma.user.count({ where: { email: { in: ['alice@example.com', 'bob@example.com'] } } })).toBe(2);
-    expect(await prisma.team.count({ where: { name: 'Demo Accounting' } })).toBe(1);
-    expect(await prisma.project.count({ where: { name: 'Client Operations' } })).toBe(1);
+    expect(await prisma.user.count({ where: { id: sentinelId } })).toBe(1);
+    expect(await prisma.team.count({ where: { id: unrelatedTeamId } })).toBe(1);
+    expect(await prisma.team.count({ where: { id: DEMO_TEAM_ID } })).toBe(1);
+    expect(await prisma.project.count({ where: { id: DEMO_PROJECT_ID } })).toBe(1);
+    expect(await prisma.user.count({ where: { id: { in: [DEMO_USER_ALICE_ID, DEMO_USER_BOB_ID] } } })).toBe(2);
   });
 });
