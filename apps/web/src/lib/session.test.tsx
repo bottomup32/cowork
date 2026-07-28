@@ -14,7 +14,7 @@ import { SessionProvider, useSession } from "./session";
 
 function Probe() {
   const { loading, user, error, logout, refresh } = useSession();
-  return <><p>{loading ? "loading" : user?.email ?? "guest"}</p><p>{error ? "error" : "ok"}</p><button onClick={() => void logout()}>logout</button><button onClick={() => void refresh()}>refresh</button></>;
+  return <><p>{loading ? "loading" : user?.email ?? "guest"}</p><p>{error ? "error" : "ok"}</p><button onClick={() => void logout().catch(() => undefined)}>logout</button><button onClick={() => void refresh()}>refresh</button></>;
 }
 
 function deferred<T>() {
@@ -56,6 +56,19 @@ describe("SessionProvider", () => {
     await waitFor(() => expect(screen.getByText("guest")).toBeInTheDocument());
     expect(apiFetch).toHaveBeenLastCalledWith("/auth/logout", { method: "POST" });
     expect(apiFetch).toHaveBeenCalledTimes(2);
+  });
+
+  it("keeps the authenticated user when logout fails and permits a retry", async () => {
+    apiFetch.mockResolvedValueOnce({ id: "u1", email: "member@cowork.test", displayName: "Member" })
+      .mockRejectedValueOnce(new Error("offline"))
+      .mockResolvedValueOnce(undefined);
+    render(<SessionProvider><Probe /></SessionProvider>);
+    await screen.findByText("member@cowork.test");
+    screen.getByRole("button", { name: "logout" }).click();
+    await waitFor(() => expect(apiFetch).toHaveBeenCalledTimes(2));
+    expect(screen.getByText("member@cowork.test")).toBeInTheDocument();
+    screen.getByRole("button", { name: "logout" }).click();
+    await waitFor(() => expect(screen.getByText("guest")).toBeInTheDocument());
   });
 
   it("fences refreshes while logout is pending and ignores stale requests", async () => {

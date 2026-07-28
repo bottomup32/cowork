@@ -29,6 +29,17 @@ describe("AppShell", () => {
     expect(logout).toHaveBeenCalledOnce();
   });
 
+  it("handles a rejected logout, disables duplicates, and allows retry", async () => {
+    const logout = vi.fn().mockRejectedValueOnce(new Error("offline")).mockResolvedValueOnce(undefined);
+    render(<AppShell user={{ id: "u1", email: "me@cowork.test", displayName: "Member" }} logout={logout}><p>content</p></AppShell>);
+    const button = document.querySelector<HTMLButtonElement>(".logout")!;
+    fireEvent.click(button); fireEvent.click(button);
+    expect(button).toBeDisabled();
+    expect(await screen.findByRole("alert")).toBeInTheDocument();
+    fireEvent.click(button);
+    expect(logout).toHaveBeenCalledTimes(2);
+  });
+
   it("moves focus into the drawer and restores it after Escape or the overlay closes it", () => {
     render(<AppShell user={{ id: "u1", email: "me@cowork.test", displayName: "민지" }} logout={vi.fn()}><p>내용</p></AppShell>);
     const toggle = screen.getByRole("button", { name: "메뉴 열기" });

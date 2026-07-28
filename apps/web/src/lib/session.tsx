@@ -55,11 +55,12 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     ++requestId.current;
     logoutInFlight.current = true;
     const pending = (async () => {
-      try { await apiFetch("/auth/logout", { method: "POST" }); }
+      let succeeded = false;
+      try { await apiFetch("/auth/logout", { method: "POST" }); succeeded = true; }
       finally {
         logoutInFlight.current = false;
         logoutPromise.current = null;
-        if (mounted.current) { setUser(null); setError(false); setLoading(false); }
+        if (succeeded && mounted.current) { setUser(null); setError(false); setLoading(false); }
       }
     })();
     logoutPromise.current = pending;

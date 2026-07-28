@@ -1,2 +1,2 @@
-import { PendingDestination } from "../../../components/pending-destination";
-export default function TasksPage() { return <PendingDestination title="My Tasks" />; }
+import { MyTasks } from "../../../components/my-tasks";
+export default function TasksPage() { return <MyTasks />; }
