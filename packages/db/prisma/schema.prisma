@@ -1,0 +1,124 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+enum TeamRole {
+  MEMBER
+  SKILL_CREATOR
+  TEAM_ADMIN
+}
+
+enum TaskStatus {
+  OPEN
+  COMPLETED
+  CANCELLED
+}
+
+enum MessageRole {
+  USER
+  ASSISTANT
+  SYSTEM
+}
+
+model User {
+  id             String            @id @default(cuid())
+  email          String            @unique
+  displayName    String
+  passwordHash   String
+  memberships    TeamMembership[]
+  projectMembers ProjectMember[]
+  createdProjects Project[]        @relation("ProjectCreator")
+  ownedTasks     Task[]            @relation("TaskOwner")
+  conversations  Conversation[]
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime          @updatedAt
+}
+
+model Team {
+  id          String           @id @default(cuid())
+  name        String
+  memberships TeamMembership[]
+  projects    Project[]
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+}
+
+model TeamMembership {
+  teamId    String
+  userId    String
+  role      TeamRole @default(MEMBER)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([teamId, userId])
+}
+
+model Project {
+  id          String          @id @default(cuid())
+  teamId      String
+  createdById String
+  name        String
+  team        Team            @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy   User            @relation("ProjectCreator", fields: [createdById], references: [id])
+  members     ProjectMember[]
+  tasks       Task[]
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+
+  @@index([teamId])
+}
+
+model ProjectMember {
+  projectId String
+  userId    String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@id([projectId, userId])
+}
+
+model Task {
+  id           String       @id @default(cuid())
+  projectId    String
+  ownerId      String
+  title        String
+  status       TaskStatus   @default(OPEN)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  owner        User         @relation("TaskOwner", fields: [ownerId], references: [id])
+  conversation Conversation?
+  createdAt    DateTime     @default(now())
+  updatedAt    DateTime     @updatedAt
+
+  @@index([projectId, ownerId])
+}
+
+model Conversation {
+  id        String    @id @default(cuid())
+  taskId    String    @unique
+  userId    String
+  task      Task      @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  user      User      @relation(fields: [userId], references: [id])
+  messages  Message[]
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
+
+  @@index([userId])
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  conversationId String
+  role           MessageRole
+  content        String       @db.Text
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onDelete: Cascade)
+  createdAt      DateTime     @default(now())
+
+  @@index([conversationId, createdAt])
+}
