@@ -10,6 +10,8 @@ const configSchema = z.object({
   WEB_ORIGIN: z.url().default("http://127.0.0.1:3000"),
   JWT_SECRET: z.string().min(32),
   DATABASE_URL: z.string().min(1),
+  CODEX_AGENT_MODE: z.enum(["fake", "codex"]).default("fake"),
+  CODEX_MODEL: z.string().min(1).optional(),
 });
 
 export type ApiConfig = z.infer<typeof configSchema>;

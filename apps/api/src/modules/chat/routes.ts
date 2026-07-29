@@ -26,7 +26,10 @@ function createTaskSendLock() {
 }
 
 async function canUseTask(database: ChatDatabase, taskId: string, userId: string) {
-  return database.task.findFirst({ where: { id: taskId, ownerId: userId, conversation: { is: { userId } }, project: { is: { members: { some: { userId } }, team: { is: { memberships: { some: { userId } } } } } } }, select: { id: true } });
+  return database.task.findFirst({
+    where: { id: taskId, ownerId: userId, conversation: { is: { userId } }, project: { is: { members: { some: { userId } }, team: { is: { memberships: { some: { userId } } } } } } },
+    select: { id: true, conversation: { select: { messages: { select: { role: true, content: true }, orderBy: [{ createdAt: "asc" }, { id: "asc" }], take: 20 } } } },
+  });
 }
 
 async function replyBeforeDeadline(agent: AgentPort, input: Parameters<AgentPort["reply"]>[0], timeoutMs: number) {
@@ -60,9 +63,10 @@ export function registerChatRoutes(app: FastifyInstance, database: ChatDatabase,
     if (!parsed.success) return reply.code(400).send({ error: "INVALID_INPUT" });
     const taskId = (request.params as { taskId: string }).taskId;
     return withTaskSendLock(taskId, async () => {
-      if (!await canUseTask(database, taskId, user.userId)) return reply.code(404).send({ error: "TASK_NOT_FOUND" });
+      const task = await canUseTask(database, taskId, user.userId);
+      if (!task) return reply.code(404).send({ error: "TASK_NOT_FOUND" });
       let assistant: { content: string };
-      try { assistant = await replyBeforeDeadline(agent, { taskId, userId: user.userId, message: parsed.data.content }, agentReplyTimeoutMs); }
+      try { assistant = await replyBeforeDeadline(agent, { taskId, userId: user.userId, message: parsed.data.content, history: task.conversation?.messages ?? [] }, agentReplyTimeoutMs); }
       catch { return reply.code(502).send({ error: "AGENT_UNAVAILABLE" }); }
       const messages = await database.$transaction(async (transaction) => {
       const locked = await transaction.$queryRaw<Array<{ conversationId: string }>>`

@@ -21,6 +21,7 @@
     "@fastify/jwt": "^10.0.0",
     "@fastify/multipart": "^10.1.0",
     "@notionhq/client": "^5.23.2",
+    "@openai/codex-sdk": "^0.145.0",
     "argon2": "^0.41.0",
     "dotenv": "^17.0.0",
     "exceljs": "^4.4.0",

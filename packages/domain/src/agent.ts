@@ -2,6 +2,7 @@ export interface AgentReplyInput {
   taskId: string;
   userId: string;
   message: string;
+  history?: Array<{ role: "USER" | "ASSISTANT" | "SYSTEM"; content: string }>;
   signal?: AbortSignal;
 }
 
