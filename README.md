@@ -32,6 +32,9 @@ pnpm dev
 - `alice@example.com` / `CoworkDemo123!` — Team Admin
 - `bob@example.com` / `CoworkDemo123!` — Member
 
+다른 PC에서 처음 설치하거나 GitHub를 통해 이어서 개발하려면
+[원격 개발 가이드](docs/REMOTE-DEVELOPMENT.md)를 따르세요.
+
 ## 환경 설정
 
 `.env.example`을 기준으로 설정합니다.
@@ -67,6 +70,7 @@ Notion·Composio·Google 자격증명은 서버 환경 변수나 비밀 저장�
 
 ## 제품 문서
 
+- [다른 기기에서 개발하기](docs/REMOTE-DEVELOPMENT.md)
 - [제품 설계](docs/superpowers/specs/2026-07-27-team-cowork-design.md)
 - [UI 테마](docs/superpowers/specs/2026-07-27-team-cowork-ui-theme-design.md)
 - [마스터 로드맵](docs/superpowers/plans/2026-07-27-team-cowork-master-roadmap.md)
