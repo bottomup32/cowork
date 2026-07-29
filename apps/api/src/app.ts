@@ -6,9 +6,10 @@ import { registerAuthRoutes, type AuthDatabase } from "./modules/auth/routes.js"
 import { registerProjectRoutes, type ProjectDatabase } from "./modules/projects/routes.js";
 import { registerTaskRoutes, type TaskDatabase } from "./modules/tasks/routes.js";
 import { registerChatRoutes, type ChatDatabase } from "./modules/chat/routes.js";
+import { registerSkillRoutes, type SkillDatabase } from "./modules/skills/routes.js";
 import { DeterministicFakeAgent, type AgentPort } from "@cowork/domain";
 
-export type AppDatabase = AuthDatabase & ProjectDatabase & TaskDatabase & ChatDatabase;
+export type AppDatabase = AuthDatabase & ProjectDatabase & TaskDatabase & ChatDatabase & SkillDatabase;
 
 export interface BuildAppOptions {
   database?: AppDatabase;
@@ -34,6 +35,7 @@ export function buildApp(options: BuildAppOptions = {}) {
     registerProjectRoutes(instance, options.database ?? unavailableDatabase);
     registerTaskRoutes(instance, options.database ?? unavailableDatabase);
     registerChatRoutes(instance, options.database ?? unavailableDatabase, options.agent ?? new DeterministicFakeAgent(), options.agentReplyTimeoutMs ?? 30_000);
+    registerSkillRoutes(instance, options.database ?? unavailableDatabase);
     done();
   });
 

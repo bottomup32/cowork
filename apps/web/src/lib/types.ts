@@ -17,3 +17,28 @@ export type Message = {
 };
 
 export type TaskDetail = TaskSummary & { conversation: { messages: Message[] } | null };
+
+export type TeamMembership = {
+  teamId: string;
+  role: "MEMBER" | "SKILL_CREATOR" | "TEAM_ADMIN";
+  team: { name: string };
+};
+
+export type SkillVersion = {
+  id: string;
+  version: number;
+  status: "DRAFT" | "TESTED" | "REVIEW" | "PUBLISHED";
+  definition: { goal: string; steps: string[]; outputFormat: string; approvalPolicy: string };
+  changeNote: string;
+};
+
+export type SkillDashboard = {
+  memberships: TeamMembership[];
+  drafts: Array<{ id: string; teamId: string; name: string; latestVersion: SkillVersion }>;
+  published: Array<{ id: string; teamId: string; name: string; activeVersion: SkillVersion }>;
+  reviews: Array<{
+    id: string;
+    requestedBy: { displayName: string };
+    skillVersion: SkillVersion & { skill: { id: string; name: string; teamId: string } };
+  }>;
+};

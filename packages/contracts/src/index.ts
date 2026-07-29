@@ -16,8 +16,22 @@ export const createTaskInputSchema = z.object({
 export const createMessageInputSchema = z.object({
   content: z.string().trim().min(1).max(20_000),
 });
+export const createSkillInputSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  goal: z.string().trim().min(1).max(10_000),
+});
+export const reviseSkillInputSchema = z.object({
+  change: z.string().trim().min(1).max(10_000),
+});
+export const reviewSkillInputSchema = z.object({
+  decision: z.enum(["APPROVE", "REJECT"]),
+  note: z.string().trim().max(2_000).optional(),
+});
 
 export type LoginInput = z.infer<typeof loginInputSchema>;
 export type CreateProjectInput = z.infer<typeof createProjectInputSchema>;
 export type CreateTaskInput = z.infer<typeof createTaskInputSchema>;
 export type CreateMessageInput = z.infer<typeof createMessageInputSchema>;
+export type CreateSkillInput = z.infer<typeof createSkillInputSchema>;
+export type ReviseSkillInput = z.infer<typeof reviseSkillInputSchema>;
+export type ReviewSkillInput = z.infer<typeof reviewSkillInputSchema>;

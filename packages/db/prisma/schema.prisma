@@ -25,6 +25,19 @@ enum MessageRole {
   SYSTEM
 }
 
+enum SkillVersionStatus {
+  DRAFT
+  TESTED
+  REVIEW
+  PUBLISHED
+}
+
+enum SkillReviewStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
+
 model User {
   id             String            @id @default(cuid())
   email          String            @unique
@@ -35,6 +48,11 @@ model User {
   createdProjects Project[]        @relation("ProjectCreator")
   ownedTasks     Task[]            @relation("TaskOwner")
   conversations  Conversation[]
+  createdSkills  Skill[]           @relation("SkillCreator")
+  skillVersions  SkillVersion[]    @relation("SkillVersionCreator")
+  skillTestRuns  SkillTestRun[]
+  requestedSkillReviews SkillReview[] @relation("SkillReviewRequester")
+  reviewedSkillReviews  SkillReview[] @relation("SkillReviewReviewer")
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 }
@@ -44,8 +62,75 @@ model Team {
   name        String
   memberships TeamMembership[]
   projects    Project[]
+  skills      Skill[]
   createdAt   DateTime         @default(now())
   updatedAt   DateTime         @updatedAt
+}
+
+model Skill {
+  id              String        @id @default(cuid())
+  teamId          String
+  createdById     String
+  name            String
+  activeVersionId String?       @unique
+  disabledAt      DateTime?
+  team            Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  createdBy       User          @relation("SkillCreator", fields: [createdById], references: [id])
+  versions        SkillVersion[] @relation("SkillVersions")
+  activeVersion   SkillVersion? @relation("ActiveSkillVersion", fields: [activeVersionId], references: [id], onDelete: SetNull)
+  createdAt       DateTime      @default(now())
+  updatedAt       DateTime      @updatedAt
+
+  @@index([teamId, updatedAt])
+  @@index([createdById, updatedAt])
+}
+
+model SkillVersion {
+  id              String             @id @default(cuid())
+  skillId         String
+  createdById     String
+  version         Int
+  status          SkillVersionStatus @default(DRAFT)
+  definition      Json
+  changeNote      String             @db.Text
+  skill           Skill              @relation("SkillVersions", fields: [skillId], references: [id], onDelete: Cascade)
+  createdBy       User               @relation("SkillVersionCreator", fields: [createdById], references: [id])
+  activeForSkills Skill[]            @relation("ActiveSkillVersion")
+  testRuns        SkillTestRun[]
+  reviews         SkillReview[]
+  createdAt       DateTime           @default(now())
+
+  @@unique([skillId, version])
+  @@index([skillId, createdAt])
+}
+
+model SkillTestRun {
+  id             String       @id @default(cuid())
+  skillVersionId String
+  createdById    String
+  passed         Boolean
+  result         Json
+  skillVersion   SkillVersion @relation(fields: [skillVersionId], references: [id], onDelete: Cascade)
+  createdBy      User         @relation(fields: [createdById], references: [id])
+  createdAt      DateTime     @default(now())
+
+  @@index([skillVersionId, createdAt])
+}
+
+model SkillReview {
+  id             String            @id @default(cuid())
+  skillVersionId String
+  requestedById  String
+  reviewedById   String?
+  status         SkillReviewStatus @default(PENDING)
+  note           String?           @db.Text
+  skillVersion   SkillVersion      @relation(fields: [skillVersionId], references: [id], onDelete: Cascade)
+  requestedBy    User              @relation("SkillReviewRequester", fields: [requestedById], references: [id])
+  reviewedBy     User?             @relation("SkillReviewReviewer", fields: [reviewedById], references: [id])
+  createdAt      DateTime          @default(now())
+  reviewedAt     DateTime?
+
+  @@index([skillVersionId, status])
 }
 
 model TeamMembership {
