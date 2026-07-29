@@ -26,12 +26,12 @@ export function SkillStudio({ load = defaultLoad, create = defaultCreate }: Prop
     try { setDashboard(await load()); setError(""); }
     catch { setError("Skill 정보를 불러오지 못했습니다."); }
   }, [load]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { queueMicrotask(() => void refresh()); }, [refresh]);
 
   const authorTeams = useMemo(() => dashboard?.memberships.filter((item) => item.role !== "MEMBER") ?? [], [dashboard]);
   const adminTeamIds = useMemo(() => new Set(dashboard?.memberships.filter((item) => item.role === "TEAM_ADMIN").map((item) => item.teamId)), [dashboard]);
   const [teamId, setTeamId] = useState("");
-  useEffect(() => { if (!teamId && authorTeams[0]) setTeamId(authorTeams[0].teamId); }, [authorTeams, teamId]);
+  const selectedTeamId = teamId || authorTeams[0]?.teamId || "";
 
   async function action(work: () => Promise<unknown>) {
     setBusy(true); setError("");
@@ -48,10 +48,10 @@ export function SkillStudio({ load = defaultLoad, create = defaultCreate }: Prop
 
     {authorTeams.length > 0 && <form className="skill-builder" onSubmit={(event) => {
       event.preventDefault();
-      void action(async () => { await create(teamId, name, goal); setName(""); setGoal(""); });
+      void action(async () => { await create(selectedTeamId, name, goal); setName(""); setGoal(""); });
     }}>
       <div><span className="context-label">대화형 Builder</span><h2>새 Skill 만들기</h2><p>업무 목표를 설명하면 입력 검증, 격리 실행, 결과 미리보기 단계가 포함된 초안을 만듭니다.</p></div>
-      <label>팀<select value={teamId} onChange={(event) => setTeamId(event.target.value)}>{authorTeams.map((item) => <option key={item.teamId} value={item.teamId}>{item.team.name}</option>)}</select></label>
+      <label>팀<select value={selectedTeamId} onChange={(event) => setTeamId(event.target.value)}>{authorTeams.map((item) => <option key={item.teamId} value={item.teamId}>{item.team.name}</option>)}</select></label>
       <label>Skill 이름<input aria-label="Skill 이름" required value={name} onChange={(event) => setName(event.target.value)} /></label>
       <label className="wide">업무 목표<textarea aria-label="업무 목표" required value={goal} onChange={(event) => setGoal(event.target.value)} placeholder="예: 청구서 Excel을 검토하고 예외 내역 보고서를 작성해줘." /></label>
       <button className="button-primary" disabled={busy} type="submit">초안 생성</button>

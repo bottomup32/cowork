@@ -16,7 +16,7 @@ export function ApprovalCenter({ load = defaultLoad, decide = defaultDecide }: P
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const refresh = useCallback(async () => { try { setData(await load()); setError(""); } catch { setError("승인 목록을 불러오지 못했습니다."); } }, [load]);
-  useEffect(() => { void refresh(); }, [refresh]);
+  useEffect(() => { queueMicrotask(() => void refresh()); }, [refresh]);
   async function onDecision(id: string, decision: "APPROVE" | "REJECT") {
     setBusy(true);
     try { await decide(id, decision); await refresh(); } catch { setError("승인 결정을 저장하지 못했습니다."); } finally { setBusy(false); }

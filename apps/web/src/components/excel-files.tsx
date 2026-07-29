@@ -9,7 +9,7 @@ export function ExcelFiles({ taskId }: { taskId: string }) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const load = useCallback(async () => { try { setFiles(await apiFetch<ExcelFile[]>(`/tasks/${taskId}/files`)); } catch { setError("Excel 파일을 불러오지 못했습니다."); } }, [taskId]);
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => { queueMicrotask(() => void load()); }, [load]);
   async function upload(file: File) {
     setBusy(true); setError("");
     try {
