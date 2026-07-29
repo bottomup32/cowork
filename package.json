@@ -7,7 +7,7 @@
     "dev": "turbo run dev --parallel",
     "lint": "turbo run lint",
     "typecheck": "turbo run typecheck",
-    "test": "node --test tests/repo-structure.test.mjs && turbo run test",
+    "test": "node --test tests/repo-structure.test.mjs tests/config/e2e-database-url.test.mjs && turbo run test",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
     "db:generate": "pnpm --filter @cowork/db db:generate",
@@ -15,8 +15,10 @@
     "db:seed": "pnpm --filter @cowork/db db:seed"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
     "@playwright/test": "^1.55.0",
     "@types/node": "^22.0.0",
+    "dotenv": "^17.4.2",
     "prettier": "^3.0.0",
     "turbo": "^2.0.0",
     "typescript": "^5.0.0",
