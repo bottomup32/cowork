@@ -10,9 +10,11 @@ async function main() {
     if (process.argv[2] === "seed") {
       await seedDemoData(prisma);
     } else if (process.argv[2] === "cleanup") {
-      const taskIds = (process.argv[3] ?? "").split(",").filter(Boolean);
+      const taskIds = (process.argv[3] ?? "").split(",").filter((value) => value && value !== "-");
+      const skillIds = (process.argv[4] ?? "").split(",").filter((value) => value && value !== "-");
       if (!taskIds.every((taskId) => typeof taskId === "string")) throw new Error("Task cleanup accepts only task IDs.");
       await prisma.task.deleteMany({ where: { id: { in: taskIds } } });
+      await prisma.skill.deleteMany({ where: { id: { in: skillIds } } });
     } else {
       throw new Error("Expected seed or cleanup database command.");
     }

@@ -2,6 +2,7 @@ import { config as loadEnv } from "dotenv";
 import { execFile } from "node:child_process";
 import { promisify } from "node:util";
 import AxeBuilder from "@axe-core/playwright";
+import ExcelJS from "exceljs";
 import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { resolveE2eDatabaseUrl } from "../config/e2e-database-url.mjs";
 
@@ -12,6 +13,7 @@ resolveE2eDatabaseUrl();
 const demoPassword = "CoworkDemo123!";
 const projectPath = "/projects/demo-project-client-operations";
 const createdTaskIds = new Set<string>();
+const createdSkillIds = new Set<string>();
 const execFileAsync = promisify(execFile);
 
 async function login(context: BrowserContext, email: string) {
@@ -42,13 +44,63 @@ async function expectNoSeriousAxeViolations(page: Page) {
 }
 
 test.afterEach(async () => {
-  if (!createdTaskIds.size) return;
+  if (!createdTaskIds.size && !createdSkillIds.size) return;
   try {
-    const command = `pnpm --filter @cowork/db exec tsx ../../tests/e2e/database-command.ts cleanup ${[...createdTaskIds].join(",")}`;
+    const command = `pnpm --filter @cowork/db exec tsx ../../tests/e2e/database-command.ts cleanup ${[...createdTaskIds].join(",") || "-"} ${[...createdSkillIds].join(",") || "-"}`;
     if (process.platform === "win32") await execFileAsync(process.env.ComSpec ?? "cmd.exe", ["/d", "/s", "/c", command], { env: process.env });
     else await execFileAsync("sh", ["-lc", command], { env: process.env });
   } finally {
     createdTaskIds.clear();
+    createdSkillIds.clear();
+  }
+});
+
+test("skill publishing, Excel upload, risk approval, and integration status form one usable workflow", async ({ browser }) => {
+  const context = await browser.newContext();
+  try {
+    const page = await login(context, "alice@example.com");
+    await page.goto("/skills");
+    await page.getByLabel("Skill 이름").fill(`Invoice review ${Date.now()}`);
+    await page.getByLabel("업무 목표").fill("Excel 청구서를 검토하고 예외 보고서를 작성해줘.");
+    const skillResponse = page.waitForResponse((response) => response.url().endsWith("/teams/demo-team-accounting/skills") && response.request().method() === "POST");
+    await page.getByRole("button", { name: "초안 생성" }).click();
+    const skill = await (await skillResponse).json() as { id: string };
+    createdSkillIds.add(skill.id);
+    await expect(page.getByText("v1 · DRAFT")).toBeVisible();
+    await page.getByRole("button", { name: "안전 테스트" }).click();
+    await expect(page.getByText("v1 · TESTED")).toBeVisible();
+    await page.getByRole("button", { name: "승인 요청" }).click();
+    await expect(page.getByText("v1 · REVIEW")).toBeVisible();
+    await page.getByRole("button", { name: "승인·배포" }).click();
+    await expect(page.getByText("v1 · 배포됨")).toBeVisible();
+
+    const taskId = await createTask(page, `Excel approval E2E ${Date.now()}`);
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet("Invoices");
+    sheet.addRow(["Invoice", "Amount"]);
+    sheet.addRow(["INV-1", 125]);
+    const workbookBytes = Buffer.from(await workbook.xlsx.writeBuffer());
+    await page.getByLabel("Excel 파일 선택").setInputFiles({ name: "invoices.xlsx", mimeType: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", buffer: workbookBytes });
+    await expect(page.getByText("invoices.xlsx")).toBeVisible();
+    await expect(page.getByText("Invoices 2행")).toBeVisible();
+
+    const approval = await context.request.post(`http://127.0.0.1:4100/tasks/${taskId}/approvals`, {
+      data: { service: "gmail", action: "gmail.send", summary: "Send Excel summary", payload: { to: "client@example.com" } },
+    });
+    expect(approval.status()).toBe(201);
+    await page.goto("/approvals");
+    const approvalCard = page.locator(".approval-card").filter({ hasText: "Send Excel summary" });
+    await expect(approvalCard).toBeVisible();
+    await approvalCard.getByRole("button", { name: "승인" }).click();
+    await expect(page.getByText("APPROVED")).toBeVisible();
+
+    await page.goto("/integrations");
+    await expect(page.getByRole("heading", { name: "Notion" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Google Docs & Sheets" })).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Composio" })).toBeVisible();
+    await expectNoSeriousAxeViolations(page);
+  } finally {
+    await context.close();
   }
 });
 

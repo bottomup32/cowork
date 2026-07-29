@@ -11,9 +11,6 @@ importers:
       '@axe-core/playwright':
         specifier: ^4.12.1
         version: 4.12.1(playwright-core@1.62.0)
-      '@openai/codex':
-        specifier: ^0.145.0
-        version: 0.145.0
       '@playwright/test':
         specifier: ^1.55.0
         version: 1.62.0
@@ -23,6 +20,9 @@ importers:
       dotenv:
         specifier: ^17.4.2
         version: 17.4.2
+      exceljs:
+        specifier: ^4.4.0
+        version: 4.4.0
       prettier:
         specifier: ^3.0.0
         version: 3.9.6
