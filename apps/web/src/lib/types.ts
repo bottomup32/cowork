@@ -42,3 +42,21 @@ export type SkillDashboard = {
     skillVersion: SkillVersion & { skill: { id: string; name: string; teamId: string } };
   }>;
 };
+
+export type Approval = {
+  id: string;
+  taskId: string;
+  teamId: string;
+  service: string;
+  action: string;
+  summary: string;
+  payload: Record<string, unknown>;
+  risk: "REVERSIBLE_WRITE" | "ALWAYS_APPROVE";
+  status: "PENDING" | "APPROVED" | "REJECTED" | "EXECUTED" | "CANCELLED";
+  note: string | null;
+  createdAt: string;
+  decidedAt: string | null;
+  requestedBy?: { displayName: string };
+};
+
+export type ApprovalDashboard = { mine: Approval[]; pending: Approval[] };
