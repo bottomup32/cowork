@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { ApiError, apiFetch } from "../lib/api";
 import type { Message, TaskDetail } from "../lib/types";
 import { TaskChat } from "./task-chat";
+import { ExcelFiles } from "./excel-files";
 
 const getTask = (taskId: string) => apiFetch<TaskDetail>(`/tasks/${taskId}`);
 const send = (taskId: string, content: string) => apiFetch<{ messages: Message[] }>(`/tasks/${taskId}/messages`, { method: "POST", body: JSON.stringify({ content }) }).then((result) => result.messages);
@@ -22,5 +23,5 @@ export function TaskWorkspace({ taskId, loadTask = getTask, sendMessage = send }
   if (stateResourceId === taskId && state === "missing") return <section className="workspace-page empty-state"><h1>작업을 찾을 수 없습니다</h1></section>;
   if (stateResourceId === taskId && state === "error") return <section className="workspace-page"><p role="alert" className="inline-alert">작업을 불러오지 못했습니다. 다시 시도해 주세요.</p><button className="button-primary" onClick={() => void load()}>다시 시도</button></section>;
   if (!task || taskResourceId !== taskId) return <section className="workspace-page" aria-label="작업 불러오는 중"><div className="content-skeleton" /></section>;
-  return <section className="workspace-page task-workspace"><header className="page-heading"><p className="eyebrow">개인 작업</p><h1>{task.title}</h1><span className="status-chip">{task.status}</span></header><TaskChat taskId={task.id} initialMessages={task.conversation?.messages ?? []} sendMessage={(content) => sendMessage(task.id, content)} /></section>;
+  return <section className="workspace-page task-workspace"><header className="page-heading"><p className="eyebrow">개인 작업</p><h1>{task.title}</h1><span className="status-chip">{task.status}</span></header><ExcelFiles taskId={task.id} /><TaskChat taskId={task.id} initialMessages={task.conversation?.messages ?? []} sendMessage={(content) => sendMessage(task.id, content)} /></section>;
 }

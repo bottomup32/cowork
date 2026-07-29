@@ -1,4 +1,5 @@
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:4000";
+export const apiEndpoint = (path: string) => `${API_URL}${path}`;
 
 export class ApiError extends Error {
   constructor(
@@ -12,11 +13,11 @@ export class ApiError extends Error {
 
 export async function apiFetch<T>(path: string, init: RequestInit = {}): Promise<T> {
   const headers = new Headers(init.headers);
-  if (init.body !== undefined && !headers.has("content-type")) {
+  if (init.body !== undefined && !(init.body instanceof FormData) && !headers.has("content-type")) {
     headers.set("Content-Type", "application/json");
   }
 
-  const response = await fetch(`${API_URL}${path}`, { ...init, credentials: "include", headers });
+  const response = await fetch(apiEndpoint(path), { ...init, credentials: "include", headers });
   if (!response.ok) {
     let code = `HTTP_${response.status}`;
     try {

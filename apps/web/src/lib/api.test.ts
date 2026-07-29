@@ -39,6 +39,17 @@ describe("apiFetch", () => {
     expect(new Headers(fetchMock.mock.calls[0][1].headers).get("content-type")).toBe("text/plain");
   });
 
+  it("lets the browser add the multipart boundary for FormData", async () => {
+    const fetchMock = vi.fn().mockResolvedValue(new Response(JSON.stringify({ id: "f1" }), { status: 200 }));
+    vi.stubGlobal("fetch", fetchMock);
+    const form = new FormData();
+    form.append("file", new Blob(["xlsx"]), "book.xlsx");
+
+    await apiFetch("/files", { method: "POST", body: form });
+
+    expect(new Headers(fetchMock.mock.calls[0][1].headers).has("content-type")).toBe(false);
+  });
+
   it("returns undefined for a 204 response", async () => {
     vi.stubGlobal("fetch", vi.fn().mockResolvedValue(new Response(null, { status: 204 })));
     await expect(apiFetch("/auth/logout", { method: "POST" })).resolves.toBeUndefined();

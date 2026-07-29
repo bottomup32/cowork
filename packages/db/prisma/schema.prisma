@@ -70,6 +70,7 @@ model User {
   requestedApprovals ApprovalRequest[] @relation("ApprovalRequester")
   decidedApprovals   ApprovalRequest[] @relation("ApprovalDecider")
   auditEvents        AuditEvent[]
+  files              FileAsset[]
   createdAt      DateTime          @default(now())
   updatedAt      DateTime          @updatedAt
 }
@@ -201,6 +202,7 @@ model Task {
   conversation Conversation?
   approvals    ApprovalRequest[]
   auditEvents  AuditEvent[]
+  files        FileAsset[]
   createdAt    DateTime     @default(now())
   updatedAt    DateTime     @updatedAt
 
@@ -250,6 +252,24 @@ model AuditEvent {
 
   @@index([teamId, createdAt])
   @@index([taskId, createdAt])
+}
+
+model FileAsset {
+  id              String   @id @default(cuid())
+  taskId          String
+  ownerId         String
+  name            String
+  mediaType       String
+  size            Int
+  sha256          String
+  content         Bytes
+  workbookSummary Json
+  task            Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  owner           User     @relation(fields: [ownerId], references: [id])
+  createdAt       DateTime @default(now())
+
+  @@index([taskId, createdAt])
+  @@index([ownerId, createdAt])
 }
 
 model Conversation {

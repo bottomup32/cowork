@@ -12,16 +12,20 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@cowork/db": "workspace:*",
+    "@composio/core": "^0.14.0",
     "@cowork/contracts": "workspace:*",
+    "@cowork/db": "workspace:*",
     "@cowork/domain": "workspace:*",
     "@fastify/cookie": "^11.0.0",
     "@fastify/cors": "^11.0.0",
     "@fastify/jwt": "^10.0.0",
+    "@fastify/multipart": "^10.1.0",
+    "@notionhq/client": "^5.23.2",
+    "argon2": "^0.41.0",
     "dotenv": "^17.0.0",
+    "exceljs": "^4.4.0",
     "fastify": "^5.0.0",
     "fastify-plugin": "^5.0.0",
-    "argon2": "^0.41.0",
     "tsx": "^4.0.0",
     "zod": "^4.0.0"
   },

@@ -60,3 +60,20 @@ export type Approval = {
 };
 
 export type ApprovalDashboard = { mine: Approval[]; pending: Approval[] };
+
+export type ExcelFile = {
+  id: string;
+  taskId: string;
+  name: string;
+  size: number;
+  sha256: string;
+  workbookSummary: { sheets: Array<{ name: string; rowCount: number; columnCount: number; preview: unknown[][] }> };
+  createdAt: string;
+};
+
+export type IntegrationState = {
+  id: "notion" | "google" | "composio";
+  name: string;
+  status: "READY" | "NEEDS_CONFIGURATION";
+  capability: string;
+};
