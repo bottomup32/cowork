@@ -1,0 +1,895 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+</head>
+<body style="margin:0">
+<title>AI 오피스</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a live 3D floor plan on the left, an operations panel on the right (stacked on phones). */
+:root {
+  --bg: #e9edf1;
+  --surface: #ffffff;
+  --surface-2: #f4f6f9;
+  --ink: #16202b;
+  --muted: #5a6776;
+  --line: #d6dde5;
+  --accent: #0e7c66;
+  --accent-ink: #ffffff;
+  --chief: #b7791f;
+  --ok: #2f855a;
+  --warn: #b7791f;
+  --bad: #c53030;
+  --scene-bg: #dfe5eb;
+  --floor: #eef1f4;
+  --wall: #c9d2dc;
+  --desk: #fbfcfd;
+  --shadow: 0 1px 2px rgba(20, 30, 45, .06), 0 8px 24px rgba(20, 30, 45, .08);
+  --font-body: "IBM Plex Sans KR", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #11161c; --surface: #19202a; --surface-2: #202834; --ink: #e6ebf1; --muted: #95a2b2; --line: #2b3542;
+    --accent: #37c4a0; --accent-ink: #062a22; --chief: #e2a948; --ok: #5fcf93; --warn: #e2a948; --bad: #f07a7a;
+    --scene-bg: #141a21; --floor: #232b35; --wall: #384350; --desk: #3a4554;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #11161c; --surface: #19202a; --surface-2: #202834; --ink: #e6ebf1; --muted: #95a2b2; --line: #2b3542;
+  --accent: #37c4a0; --accent-ink: #062a22; --chief: #e2a948; --ok: #5fcf93; --warn: #e2a948; --bad: #f07a7a;
+  --scene-bg: #141a21; --floor: #232b35; --wall: #384350; --desk: #3a4554;
+  --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  color-scheme: dark;
+}
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 14px; line-height: 1.55; }
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+#app { display: flex; flex-direction: column; height: 100%; }
+.topbar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 10px 16px; border-bottom: 1px solid var(--line); background: var(--surface); }
+.brand { display: flex; align-items: center; gap: 10px; margin-right: auto; }
+.brand svg { flex: none; }
+.brand h1 { font-size: 17px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+.brand small { color: var(--muted); font-size: 12px; }
+.chip { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); font-size: 12px; white-space: nowrap; }
+.chip .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--muted); }
+.chip.live .dot { background: var(--ok); }
+.chip.demo .dot { background: var(--warn); }
+.ctrl { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; color: var(--muted); }
+.ctrl select { padding: 4px 6px; border-radius: 6px; border: 1px solid var(--line); background: var(--surface); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 7px 12px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); font-weight: 500; font-size: 13px; }
+.btn:hover { background: var(--surface-2); }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.btn.primary:hover { filter: brightness(1.06); }
+.btn.danger { color: var(--bad); }
+.btn.sm { padding: 4px 9px; font-size: 12px; }
+.btn[disabled] { opacity: .5; cursor: not-allowed; }
+
+.layout { flex: 1; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 430px; }
+.stage { position: relative; min-width: 0; min-height: 0; overflow: hidden; background: var(--scene-bg); }
+#scene { display: block; width: 100%; height: 100%; touch-action: none; cursor: grab; }
+#scene:active { cursor: grabbing; }
+#labels { position: absolute; inset: 0; pointer-events: none; overflow: hidden; }
+.lbl { position: absolute; left: 0; top: 0; transform: translate(-50%, -100%); white-space: nowrap; will-change: transform; }
+.tag { font-size: 11px; padding: 1px 7px; border-radius: 5px; background: var(--surface); color: var(--ink); border: 1px solid var(--line); box-shadow: var(--shadow); }
+.tag b { font-weight: 600; }
+.tag.chief { border-color: var(--chief); }
+.sign { font-size: 13px; font-weight: 700; padding: 3px 10px; border-radius: 6px; color: #fff; letter-spacing: .02em; box-shadow: var(--shadow); }
+.sign small { font-weight: 500; opacity: .85; margin-left: 6px; font-size: 11px; }
+.bubble { margin-bottom: 4px; max-width: 220px; white-space: normal; font-size: 11.5px; line-height: 1.4; padding: 5px 9px; border-radius: 10px; background: var(--ink); color: var(--bg); box-shadow: var(--shadow); position: relative; }
+.bubble::after { content: ""; position: absolute; left: 50%; bottom: -5px; margin-left: -5px; border: 5px solid transparent; border-bottom: 0; border-top-color: var(--ink); }
+.bubble .typing { display: inline-flex; gap: 3px; margin-left: 4px; vertical-align: middle; }
+.bubble .typing i { width: 4px; height: 4px; border-radius: 50%; background: currentColor; opacity: .4; animation: blink 1s infinite; }
+.bubble .typing i:nth-child(2) { animation-delay: .15s; } .bubble .typing i:nth-child(3) { animation-delay: .3s; }
+@keyframes blink { 50% { opacity: 1; } }
+.hud { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.hud .hint { font-size: 11.5px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); padding: 4px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; }
+.hud input[type="checkbox"] { margin: 0; accent-color: var(--accent); }
+.nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
+
+.panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--surface); }
+.tabs { display: flex; border-bottom: 1px solid var(--line); padding: 0 8px; }
+.tabs button { flex: 1; padding: 11px 6px; border: 0; background: none; border-bottom: 2px solid transparent; color: var(--muted); font-weight: 600; font-size: 13px; }
+.tabs button[aria-selected="true"] { color: var(--ink); border-bottom-color: var(--accent); }
+.tabs .count { font-family: var(--font-mono); font-weight: 500; font-size: 11px; color: var(--muted); margin-left: 3px; }
+.tabpane { flex: 1; min-height: 0; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+
+.chiefcard { border: 1px solid var(--line); border-radius: 12px; padding: 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 10px; }
+.chiefcard header { display: flex; align-items: center; gap: 10px; }
+.avatar { width: 30px; height: 30px; border-radius: 50%; display: grid; place-items: center; color: #fff; font-weight: 700; font-size: 13px; flex: none; }
+.chiefcard h2 { font-size: 14px; margin: 0; }
+.chiefcard p { margin: 0; color: var(--muted); font-size: 12.5px; }
+textarea { width: 100%; resize: vertical; min-height: 92px; padding: 10px 12px; border-radius: 9px; border: 1px solid var(--line); background: var(--surface); line-height: 1.5; }
+input[type="text"] { width: 100%; padding: 8px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; }
+.examples button { font-size: 12px; padding: 4px 9px; border-radius: 999px; border: 1px dashed var(--line); background: var(--surface); color: var(--muted); text-align: left; }
+.examples button:hover { color: var(--ink); border-style: solid; }
+.row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.row .grow { flex: 1; min-width: 0; }
+.note { font-size: 12px; color: var(--muted); }
+
+.section-title { font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--muted); margin: 4px 0 -4px; }
+.taskcard { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+.taskcard .head { padding: 12px 14px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 6px; }
+.taskcard .order { font-weight: 600; margin: 0; }
+.taskcard .summary { margin: 0; color: var(--muted); font-size: 12.5px; }
+.steps { list-style: none; margin: 0; padding: 0; }
+.step { padding: 10px 14px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 26px minmax(0, 1fr); gap: 4px 10px; }
+.step:last-child { border-bottom: 0; }
+.step .avatar { width: 26px; height: 26px; font-size: 11px; }
+.step .who { display: flex; gap: 6px; align-items: baseline; flex-wrap: wrap; font-size: 12.5px; }
+.step .who b { font-weight: 600; }
+.step .who span { color: var(--muted); font-size: 12px; }
+.step .title { grid-column: 2; font-size: 13px; }
+.step .preview { grid-column: 2; font-size: 12px; color: var(--muted); font-family: var(--font-mono); white-space: pre-wrap; word-break: break-word; max-height: 7.5em; overflow: hidden; background: var(--surface-2); border-radius: 6px; padding: 6px 8px; }
+.pill { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; font-weight: 600; padding: 1px 8px; border-radius: 999px; border: 1px solid currentColor; white-space: nowrap; }
+.pill.queued { color: var(--muted); }
+.pill.working, .pill.planning, .pill.reviewing { color: var(--accent); }
+.pill.done { color: var(--ok); }
+.pill.error, .pill.stopped { color: var(--bad); }
+.pill.new { color: var(--chief); }
+.final { padding: 12px 14px; background: var(--surface-2); display: flex; flex-direction: column; gap: 8px; }
+.final .md { max-height: 260px; overflow: hidden; position: relative; }
+.final .md::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 40px; background: linear-gradient(transparent, var(--surface-2)); }
+.empty { border: 1px dashed var(--line); border-radius: 12px; padding: 18px; color: var(--muted); font-size: 13px; text-align: center; }
+
+.team { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.team header { display: flex; align-items: center; gap: 8px; }
+.swatch { width: 12px; height: 12px; border-radius: 3px; flex: none; }
+.team h3 { margin: 0; font-size: 14px; flex: 1; min-width: 0; }
+.team .desc { margin: 0; color: var(--muted); font-size: 12.5px; }
+.members { display: flex; flex-wrap: wrap; gap: 6px; }
+.member { display: inline-flex; align-items: center; gap: 6px; padding: 3px 9px 3px 4px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-2); font-size: 12px; }
+.member .avatar { width: 20px; height: 20px; font-size: 10px; }
+.member span { color: var(--muted); }
+.cap { font-family: var(--font-mono); font-size: 11px; color: var(--muted); font-variant-numeric: tabular-nums; }
+form.newteam { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface-2); }
+form.newteam textarea { min-height: 56px; }
+.colors { display: flex; gap: 6px; flex-wrap: wrap; }
+.colors label { position: relative; }
+.colors input { position: absolute; opacity: 0; inset: 0; }
+.colors span { display: block; width: 22px; height: 22px; border-radius: 6px; border: 2px solid transparent; }
+.colors input:checked + span { border-color: var(--ink); }
+.colors input:focus-visible + span { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+.hist { border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 10px; background: var(--surface); text-align: left; width: 100%; }
+.hist:hover { background: var(--surface-2); }
+.hist .o { font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.hist .m { grid-column: 1 / -1; color: var(--muted); font-size: 12px; font-variant-numeric: tabular-nums; }
+
+.drawer-bg { position: fixed; inset: 0; background: rgba(10, 15, 22, .35); z-index: 20; }
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(620px, 100%); background: var(--surface); z-index: 21; display: flex; flex-direction: column; box-shadow: var(--shadow); border-left: 1px solid var(--line); padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+.drawer > header { display: flex; align-items: center; gap: 10px; padding: 14px 16px; border-bottom: 1px solid var(--line); }
+.drawer > header h2 { margin: 0; font-size: 16px; flex: 1; min-width: 0; }
+.drawer .body { flex: 1; overflow: auto; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+details.out { border: 1px solid var(--line); border-radius: 10px; }
+details.out > summary { cursor: pointer; padding: 10px 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+details.out > .md { padding: 0 14px 12px; border-top: 1px solid var(--line); }
+dl.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 6px 14px; margin: 0; font-size: 13px; }
+dl.kv dt { color: var(--muted); }
+dl.kv dd { margin: 0; }
+
+.md { font-size: 13.5px; line-height: 1.65; overflow-wrap: anywhere; }
+.md h1, .md h2, .md h3, .md h4 { line-height: 1.35; margin: 1.1em 0 .4em; text-wrap: balance; }
+.md h1 { font-size: 18px; } .md h2 { font-size: 16px; } .md h3 { font-size: 14.5px; } .md h4 { font-size: 13.5px; }
+.md > :first-child { margin-top: .6em; }
+.md p { margin: .5em 0; }
+.md ul, .md ol { margin: .4em 0; padding-left: 1.4em; }
+.md code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 4px; border-radius: 4px; }
+.md pre { background: var(--surface-2); padding: 10px 12px; border-radius: 8px; overflow-x: auto; }
+.md pre code { background: none; padding: 0; }
+.md blockquote { margin: .6em 0; padding: 2px 12px; border-left: 3px solid var(--line); color: var(--muted); }
+.md hr { border: 0; border-top: 1px solid var(--line); margin: 1em 0; }
+.md .tbl { overflow-x: auto; margin: .6em 0; }
+.md table { border-collapse: collapse; font-size: 12.5px; min-width: 100%; }
+.md th, .md td { border: 1px solid var(--line); padding: 5px 8px; text-align: left; vertical-align: top; }
+.md th { background: var(--surface-2); }
+
+.toast { position: fixed; left: 50%; bottom: calc(18px + env(safe-area-inset-bottom, 0px)); transform: translateX(-50%); background: var(--ink); color: var(--bg); padding: 8px 14px; border-radius: 8px; font-size: 13px; z-index: 30; box-shadow: var(--shadow); max-width: calc(100% - 32px); }
+.keybox { border: 1px solid var(--line); border-radius: 12px; padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; background: var(--surface-2); }
+
+@media (max-width: 860px) {
+  #app { height: auto; min-height: 100%; }
+  .layout { grid-template-columns: minmax(0, 1fr); }
+  .stage { height: min(52vh, 440px); }
+  .panel { border-left: 0; border-top: 1px solid var(--line); }
+  .tabpane { overflow: visible; }
+}
+@media (max-width: 600px) { .hud span.hint { display: none; } }
+@media (prefers-reduced-motion: reduce) {
+  .bubble .typing i { animation: none; opacity: .8; }
+}
+</style>
+
+<div id="app">
+  <header class="topbar">
+    <div class="brand">
+      <svg width="28" height="28" viewBox="0 0 28 28" aria-hidden="true"><rect x="1" y="1" width="26" height="26" rx="6" fill="var(--accent)"/><path d="M7 9h6v5H7zM15 9h6v5h-6zM7 16h14v4H7z" fill="var(--accent-ink)"/></svg>
+      <div><h1>AI 오피스</h1><small>총괄에게 지시하면 팀을 꾸려 일을 처리합니다</small></div>
+    </div>
+    <span class="chip" id="modeChip"><span class="dot"></span><span id="modeText">연결 확인 중…</span></span>
+    <label class="ctrl" for="tierSel">작업 모드
+      <select id="tierSel">
+        <option value="quick">속도 우선</option>
+        <option value="default" selected>균형</option>
+        <option value="complex">품질 우선</option>
+      </select>
+    </label>
+  </header>
+
+  <main class="layout">
+    <section class="stage" aria-label="3D 사무실">
+      <canvas id="scene"></canvas>
+      <div id="labels"></div>
+      <div class="hud">
+        <button class="btn sm" id="resetView" type="button">시점 초기화</button>
+        <label class="hint" for="dirToggle"><input type="checkbox" id="dirToggle" checked> 자동 시점</label>
+        <span class="hint">드래그: 회전 · 휠/핀치: 확대 · 우클릭/Shift 드래그: 이동 · 직원 클릭: 상세</span>
+      </div>
+    </section>
+
+    <aside class="panel">
+      <nav class="tabs" role="tablist">
+        <button role="tab" id="tab-order" aria-selected="true" data-tab="order">지시</button>
+        <button role="tab" id="tab-teams" aria-selected="false" data-tab="teams">팀·직원<span class="count" id="staffCount"></span></button>
+        <button role="tab" id="tab-history" aria-selected="false" data-tab="history">작업 기록<span class="count" id="histCount"></span></button>
+      </nav>
+
+      <div class="tabpane" id="pane-order">
+        <div class="chiefcard">
+          <header>
+            <div class="avatar" style="background: var(--chief)">총</div>
+            <div><h2>총괄 · 한도윤</h2><p>지시를 나눠서 필요한 팀에 직원을 배치하고, 결과를 모아 보고합니다.</p></div>
+          </header>
+          <label for="orderInput" class="note">무엇을 맡길까요?</label>
+          <textarea id="orderInput" placeholder="예: 다음 달 출시하는 구독형 커피 서비스의 런칭 계획을 세워줘. 타깃, 메시지, 4주 일정까지."></textarea>
+          <div class="examples" id="examples"></div>
+          <div class="row">
+            <span class="note grow" id="runNote">Ctrl/⌘ + Enter로도 보낼 수 있어요.</span>
+            <button class="btn" id="stopBtn" type="button" hidden>중지</button>
+            <button class="btn primary" id="runBtn" type="button">총괄에게 지시</button>
+          </div>
+        </div>
+        <div id="modePane" hidden></div>
+        <p class="section-title">진행 중인 업무</p>
+        <div id="current"></div>
+      </div>
+
+      <div class="tabpane" id="pane-teams" hidden>
+        <div id="teamList"></div>
+        <form class="newteam" id="newTeamForm">
+          <strong>새 팀 만들기</strong>
+          <label class="note" for="ntName">팀 이름</label>
+          <input type="text" id="ntName" maxlength="20" placeholder="예: 재무팀" required>
+          <label class="note" for="ntDesc">하는 일 (총괄이 배정할 때 참고해요)</label>
+          <textarea id="ntDesc" maxlength="200" placeholder="예: 예산 수립, 비용 분석, 손익 시뮬레이션"></textarea>
+          <div class="colors" id="ntColors" role="radiogroup" aria-label="팀 색상"></div>
+          <div class="row"><span class="note grow">팀은 최대 8개, 팀당 직원은 최대 8명이에요.</span><button class="btn primary" type="submit">팀 추가</button></div>
+        </form>
+      </div>
+
+      <div class="tabpane" id="pane-history" hidden>
+        <div id="historyList"></div>
+      </div>
+    </aside>
+  </main>
+</div>
+
+<div class="drawer-bg" id="drawerBg" hidden></div>
+<aside class="drawer" id="drawer" hidden aria-modal="true" role="dialog" aria-labelledby="drawerTitle">
+  <header><h2 id="drawerTitle"></h2><button class="btn sm" id="drawerCopy" type="button" hidden>복사</button><button class="btn sm" id="drawerClose" type="button">닫기</button></header>
+  <div class="body" id="drawerBody"></div>
+</aside>
+<div class="toast" id="toast" hidden></div>
+
+<script src="vendor/three-office.js"></script>
+<script src="office3d.js"></script>
+<script>
+(() => {
+"use strict";
+
+/* ---------- helpers ---------- */
+const $ = (s) => document.querySelector(s);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const rid = (p) => p + "-" + Date.now().toString(36) + Math.random().toString(36).slice(2, 6);
+const clone = (o) => JSON.parse(JSON.stringify(o));
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+const fmtDate = (t) => { const d = new Date(t); return `${d.getMonth() + 1}/${d.getDate()} ${String(d.getHours()).padStart(2, "0")}:${String(d.getMinutes()).padStart(2, "0")}`; };
+const lsGet = (k) => { try { return localStorage.getItem(k); } catch { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch {} };
+const reduceMotion = matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+const PALETTE = ["#3b7dd8", "#e0603a", "#159a8c", "#8e5bd6", "#d99a26", "#cf3f72", "#4f9a5c", "#5b6ee8"];
+const SKIN = ["#f2cfae", "#e6b48c", "#c98e66", "#a4704c", "#f6dcc4"];
+const HAIR = ["#2b2420", "#4a3426", "#151515", "#7a5a3a", "#3a3a44", "#b08a5a"];
+const MAX_TEAMS = 8, MAX_STAFF = 8;
+const DEFAULT_TEAMS = [
+  { name: "기획팀", desc: "시장·고객 조사, 전략 수립, 사업 기획, 일정·리스크 관리" },
+  { name: "개발팀", desc: "소프트웨어·시스템 설계, 코드 작성, 기술 검토, 업무 자동화" },
+  { name: "디자인팀", desc: "UX 흐름, 화면 설계, 브랜드·비주얼 가이드" },
+  { name: "마케팅팀", desc: "카피라이팅, 콘텐츠, 캠페인, SNS, 홍보 계획" },
+];
+const EXAMPLES = [
+  "구독형 원두 배송 서비스 런칭 계획을 세워줘. 타깃 고객, 핵심 메시지, 4주 실행 일정까지.",
+  "사내 업무 요청을 접수하는 간단한 웹 툴을 만들려고 해. 기능 정의, 화면 구성, 개발 일정 초안을 줘.",
+  "다음 주 20명 팀 워크숍 프로그램과 준비물 체크리스트를 짜줘.",
+];
+const CHIEF = { id: "chief", name: "한도윤", role: "총괄", color: "#b7791f" };
+
+let state = { teams: [], staff: [], tasks: [] };
+let tier = "default";
+let running = null; // {task, ctls:Set<AbortController>, stopped}
+
+function toast(msg) {
+  const t = $("#toast"); t.textContent = msg; t.hidden = false;
+  clearTimeout(toast._t); toast._t = setTimeout(() => { t.hidden = true; }, 3200);
+}
+const teamOf = (id) => state.teams.find((t) => t.id === id);
+const staffOf = (teamId) => state.staff.filter((s) => s.teamId === teamId);
+const person = (id) => (id === "chief" ? CHIEF : state.staff.find((s) => s.id === id));
+const initial = (name) => String(name || "?").trim().slice(0, 1);
+const teamColor = (teamId) => (teamOf(teamId) || {}).color || "#7a8796";
+
+/* ---------- tiny markdown (escapes everything first) ---------- */
+function inlineMd(s) {
+  s = esc(s);
+  s = s.replace(/`([^`]+)`/g, "<code>$1</code>");
+  s = s.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
+  s = s.replace(/(^|[^*])\*([^*\s][^*]*)\*/g, "$1<em>$2</em>");
+  s = s.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  return s;
+}
+function md(src) {
+  const lines = String(src || "").replace(/\r/g, "").split("\n");
+  const out = []; let i = 0;
+  const isTableSep = (l) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(l);
+  const cells = (l) => l.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((c) => c.trim());
+  while (i < lines.length) {
+    const l = lines[i];
+    if (/^```/.test(l)) {
+      const buf = []; i++;
+      while (i < lines.length && !/^```/.test(lines[i])) buf.push(lines[i++]);
+      i++; out.push("<pre><code>" + esc(buf.join("\n")) + "</code></pre>"); continue;
+    }
+    let m;
+    if ((m = l.match(/^(#{1,6})\s+(.*)$/))) { const n = Math.min(4, m[1].length); out.push(`<h${n}>${inlineMd(m[2])}</h${n}>`); i++; continue; }
+    if (/^\s*([-*_])\s*\1\s*\1[\s\1]*$/.test(l)) { out.push("<hr>"); i++; continue; }
+    if (l.includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1])) {
+      const head = cells(l); i += 2; const rows = [];
+      while (i < lines.length && lines[i].includes("|") && lines[i].trim()) rows.push(cells(lines[i++]));
+      out.push('<div class="tbl"><table><thead><tr>' + head.map((c) => `<th>${inlineMd(c)}</th>`).join("") + "</tr></thead><tbody>" +
+        rows.map((r) => "<tr>" + r.map((c) => `<td>${inlineMd(c)}</td>`).join("") + "</tr>").join("") + "</tbody></table></div>");
+      continue;
+    }
+    if (/^\s*>/.test(l)) { const buf = []; while (i < lines.length && /^\s*>/.test(lines[i])) buf.push(lines[i++].replace(/^\s*>\s?/, "")); out.push("<blockquote>" + md(buf.join("\n")) + "</blockquote>"); continue; }
+    if (/^\s*([-*+]|\d+[.)])\s+/.test(l)) {
+      const ordered = /^\s*\d+[.)]/.test(l); const items = [];
+      while (i < lines.length && /^\s*([-*+]|\d+[.)])\s+/.test(lines[i])) {
+        const indent = lines[i].match(/^\s*/)[0].length;
+        let text = lines[i].replace(/^\s*([-*+]|\d+[.)])\s+/, "");
+        text = text.replace(/^\[( |x|X)\]\s+/, (_, c) => (c === " " ? "☐ " : "☑ "));
+        items.push((indent >= 2 ? '<li style="margin-left:1.2em">' : "<li>") + inlineMd(text) + "</li>"); i++;
+      }
+      out.push((ordered ? "<ol>" : "<ul>") + items.join("") + (ordered ? "</ol>" : "</ul>")); continue;
+    }
+    if (!l.trim()) { i++; continue; }
+    const buf = [];
+    while (i < lines.length && lines[i].trim() && !/^(#{1,6}\s|```|\s*>|\s*([-*+]|\d+[.)])\s+)/.test(lines[i]) && !(lines[i].includes("|") && i + 1 < lines.length && isTableSep(lines[i + 1]))) buf.push(lines[i++]);
+    out.push("<p>" + buf.map(inlineMd).join("<br>") + "</p>");
+  }
+  return out.join("");
+}
+
+/* ---------- storage: private db per viewer, else this browser ---------- */
+const LS_KEY = "ai-office-v1";
+const store = {
+  kind: "local", db: null, uid: null, writers: {},
+  async init() {
+    if (!window.claude) return;
+    try {
+      const [db, user] = await Promise.all([claude.use("db"), claude.use("user")]);
+      const id = user ? await user.id() : null;
+      if (db && id) { this.db = db; this.uid = id; this.kind = "db"; }
+    } catch (e) { console.warn("db unavailable", e); }
+  },
+  base() { return "data/users/" + this.uid; },
+  async load() {
+    if (this.kind === "db") {
+      try {
+        const office = await this.db.doc(this.base() + "/office").get();
+        const snap = await this.db.collection(this.base()).get();
+        const tasks = snap.docs.filter((d) => d.id.startsWith("t-") && d.exists).map((d) => clone(d.data()));
+        return { office: office.exists ? clone(office.data()) : null, tasks };
+      } catch (e) { console.warn(e); this.kind = "local"; }
+    }
+    try { const raw = lsGet(LS_KEY); if (raw) { const o = JSON.parse(raw); return { office: o.office, tasks: o.tasks || [] }; } } catch {}
+    return { office: null, tasks: [] };
+  },
+  queue(key, fn) {
+    const w = (this.writers[key] ||= { busy: false, next: null });
+    w.next = fn; if (!w.busy) this.pump(w);
+  },
+  async pump(w) {
+    w.busy = true;
+    while (w.next) {
+      const f = w.next; w.next = null;
+      try { await f(); } catch (e) {
+        console.warn("save failed", e);
+        toast(e && e.code === "quota_exceeded" ? "저장 공간이 가득 찼어요. 작업 기록을 몇 개 지워 주세요." : "저장하지 못했어요. 잠시 후 다시 시도돼요.");
+      }
+    }
+    w.busy = false;
+  },
+  saveLocal() { lsSet(LS_KEY, JSON.stringify({ office: officeDoc(), tasks: state.tasks.slice(0, 40) })); },
+  saveOffice() {
+    if (this.kind !== "db") return this.saveLocal();
+    const body = officeDoc();
+    this.queue("office", () => this.db.doc(this.base() + "/office").set(body));
+  },
+  saveTask(task) {
+    if (this.kind !== "db") return this.saveLocal();
+    const body = clone(task);
+    this.queue(task.id, () => this.db.doc(this.base() + "/" + task.id).set(body));
+  },
+  deleteTask(id) {
+    if (this.kind !== "db") return this.saveLocal();
+    this.queue(id, () => this.db.doc(this.base() + "/" + id).delete());
+  },
+};
+const officeDoc = () => ({ v: 1, teams: state.teams, staff: state.staff, tier });
+
+/* ---------- AI backends: Claude in the viewer, or an API key, or demo ---------- */
+const ai = {
+  kind: "demo", sample: null,
+  async init() {
+    if (window.claude) {
+      try { this.sample = await claude.use("sample"); } catch { this.sample = null; }
+      if (this.sample) { this.kind = "claude"; return; }
+    }
+    // Outside claude.ai there is no subscription to bill, so only the demo flow runs.
+    lsSet("ai-office-key", null); // purge any key an earlier version stored in this browser
+    this.kind = "demo";
+  },
+  async text(prompt, { onText, signal } = {}) {
+    if (this.kind === "claude") {
+      const r = await this.sample(prompt, { onText, signal, modelTier: tier, cache: false });
+      return r.text;
+    }
+    throw { code: "demo" };
+  },
+  async json(prompt, { signal } = {}) {
+    if (this.kind === "claude") return this.sample.json(prompt, { signal, modelTier: tier, cache: false });
+    const t = await this.text(prompt, { signal });
+    const a = t.indexOf("{"), b = t.lastIndexOf("}");
+    try { return JSON.parse(t.slice(a, b + 1)); } catch { throw { code: "invalid_json", text: t }; }
+  },
+};
+function errCopy(e) {
+  const c = (e && e.code) || "upstream_error";
+  return ({
+    not_granted: "Claude 사용이 허용되지 않았어요. 페이지를 새로 열고 허용을 눌러 주세요.",
+    sampling_disabled: "이 계정에서는 Claude를 쓸 수 없어요.",
+    rate_limited: "요청이 많거나 사용 한도에 닿았어요. 잠시 후 다시 지시해 주세요.",
+    session_expired: "로그인이 만료됐어요. 다시 로그인해 주세요.",
+    refused: "이 지시는 처리할 수 없다고 답했어요. 표현을 바꿔 다시 지시해 주세요.",
+    invalid_json: "총괄의 업무 계획을 읽지 못했어요. 한 번 더 지시해 주세요.",
+    bad_plan: "업무 계획이 비어 있었어요. 지시를 조금 더 구체적으로 적어 주세요.",
+    prompt_too_large: "자료가 너무 길어요. 지시를 나눠서 맡겨 주세요.",
+    empty_completion: "답변이 비어 있었어요. 다시 지시해 주세요.",
+    cancelled: "중지했어요.",
+  })[c] || "연결이 잠시 끊겼어요. 다시 지시해 주세요.";
+}
+
+/* ---------- office model ---------- */
+function addTeam(name, desc, color) {
+  const used = new Set(state.teams.map((t) => t.color));
+  const t = { id: rid("team"), name: String(name).slice(0, 20), desc: String(desc || "").slice(0, 200), color: color || PALETTE.find((c) => !used.has(c)) || PALETTE[state.teams.length % PALETTE.length] };
+  state.teams.push(t); return t;
+}
+function addStaff(teamId, name, role, expertise) {
+  const n = state.staff.length;
+  const s = { id: rid("p"), teamId, name: String(name || "신입").slice(0, 12), role: String(role || "담당자").slice(0, 24), expertise: String(expertise || "").slice(0, 160), skin: SKIN[n % SKIN.length], hair: HAIR[(n * 3) % HAIR.length], hiredAt: Date.now() };
+  state.staff.push(s); return s;
+}
+function seedDefaults() { state.teams = []; state.staff = []; DEFAULT_TEAMS.forEach((t) => addTeam(t.name, t.desc)); }
+
+/* ---------- prompts ---------- */
+const TONE = "확인되지 않은 수치·사실은 단정하지 말고 '가정', '확인 필요', '~일 수 있음'처럼 여지를 남겨 표시해.";
+function planPrompt(order) {
+  const teams = state.teams.map((t) => ({ id: t.id, name: t.name, desc: t.desc, members: staffOf(t.id).length }));
+  const staff = state.staff.map((s) => ({ id: s.id, name: s.name, role: s.role, teamId: s.teamId, expertise: s.expertise }));
+  return `너는 AI 회사의 총괄 "${CHIEF.name}"이다. 대표의 지시를 받아 업무를 나누고, 각 업무를 맡을 직원을 정한다.
+
+[대표의 지시]
+"""${order}"""
+
+[현재 팀] ${JSON.stringify(teams)}
+[현재 직원] ${JSON.stringify(staff)}
+
+[규칙]
+- 지시를 2~5개의 하위 업무로 나눈다. 단순한 지시면 2개도 괜찮다. 각 업무는 직원 한 명이 맡는다.
+- 업무는 적힌 순서대로 진행되고, 뒤 업무 담당자는 앞 업무 결과물을 참고할 수 있다. 조사/기획 → 실행안 → 검토 순서처럼 배치한다.
+- 이미 있는 직원 중 적합한 사람이 있으면 그 직원의 id를 staffId에 넣어 다시 맡긴다.
+- 적합한 직원이 없으면 newStaff로 새로 채용한다. teamId는 위 팀 중 가장 맞는 팀의 id. 이름은 자연스러운 한국 이름, role은 직함(예: "시니어 UX 디자이너"), expertise는 한 줄 전문분야.
+- 팀당 직원은 최대 ${MAX_STAFF}명. 어느 팀에도 맞지 않는 업무가 핵심이면 newTeam을 하나 만들 수 있고, 그 팀에 채용할 때 teamId에 "NEW"를 쓴다. 팀은 최대 ${MAX_TEAMS}개(현재 ${state.teams.length}개).
+- instruction은 담당자가 바로 일을 시작할 수 있게 구체적으로(산출물 형태, 포함할 항목) 쓴다.
+
+[출력] 다른 말 없이 JSON 하나만:
+{"summary":"업무 계획 한두 문장","newTeam":null,"steps":[{"staffId":null,"newStaff":{"teamId":"team-...","name":"이름","role":"직함","expertise":"전문분야"},"title":"짧은 업무명","instruction":"구체적 지시"}]}
+(기존 직원에게 맡길 땐 "staffId":"p-...", "newStaff":null. 새 팀이 필요하면 "newTeam":{"name":"팀 이름","desc":"하는 일"})`;
+}
+function staffPrompt(task, idx) {
+  const st = task.steps[idx];
+  const prev = task.steps.slice(0, idx).filter((s) => s.output).map((s) => `## ${s.staffName}(${s.teamName} ${s.role}) — ${s.title}\n${s.output.slice(0, 5000)}`).join("\n\n");
+  return `너는 AI 회사 ${st.teamName} 소속 ${st.staffName}(${st.role})이다.${st.expertise ? " 전문 분야: " + st.expertise + "." : ""}
+
+[대표가 총괄에게 내린 지시]
+"""${task.order}"""
+
+[총괄의 업무 계획] ${task.summary}
+
+[너에게 배정된 업무] ${st.title}
+${st.instruction}
+${prev ? "\n[앞서 동료들이 낸 결과물 — 참고하고, 겹치지 않게 이어서 작업해]\n" + prev + "\n" : ""}
+[작성 규칙]
+- 한국어 마크다운으로, 바로 쓸 수 있는 구체적인 결과물(표, 목록, 초안 문장, 일정 등)을 쓴다.
+- ${TONE}
+- 인사말이나 자기소개 없이 결과물만 쓴다. 제목은 ##부터 쓴다.`;
+}
+function finalPrompt(task) {
+  const outs = task.steps.map((s) => `## ${s.staffName}(${s.teamName} ${s.role}) — ${s.title}\n${(s.output || "(결과 없음)").slice(0, 7000)}`).join("\n\n");
+  return `너는 AI 회사의 총괄 "${CHIEF.name}"이다. 대표의 지시에 대해 직원들이 낸 결과물을 하나의 최종 보고서로 정리한다.
+
+[대표의 지시]
+"""${task.order}"""
+
+[직원 결과물]
+${outs}
+
+[보고서 형식] 한국어 마크다운:
+## 한 줄 요약
+## 핵심 결과 (직원 결과물을 통합해, 중복을 없애고 바로 쓸 수 있게. 표·목록 활용)
+## 확인이 필요한 부분 (가정으로 둔 것, 대표가 결정해야 할 것)
+## 다음 단계 제안
+- ${TONE}
+- 인사말 없이 보고서 본문만 쓴다.`;
+}
+
+/* ---------- demo backend (no Claude connection) ---------- */
+const DEMO_NAMES = ["김서연", "이준호", "박지민", "최유진", "정민재", "한소희", "오태윤", "윤하늘", "강다은", "임도현"];
+function demoPlan(order) {
+  const pick = (name) => state.teams.find((t) => t.name.includes(name)) || state.teams[0];
+  const want = [pick("기획")];
+  if (/개발|웹|앱|툴|코드|시스템|자동화/.test(order)) want.push(pick("개발"));
+  if (/디자인|화면|랜딩|UI|UX|브랜드/.test(order)) want.push(pick("디자인"));
+  if (/마케팅|홍보|런칭|출시|SNS|광고|캠페인/.test(order) || want.length < 2) want.push(pick("마케팅"));
+  const seen = new Set();
+  const steps = want.filter((t) => t && !seen.has(t.id) && seen.add(t.id)).map((t, i) => {
+    const existing = staffOf(t.id)[0];
+    return {
+      staffId: existing ? existing.id : null,
+      newStaff: existing ? null : { teamId: t.id, name: DEMO_NAMES[(state.staff.length + i) % DEMO_NAMES.length], role: t.name.replace("팀", "") + " 담당", expertise: t.desc.split(",")[0] },
+      title: i === 0 ? "요구사항 정리와 실행 계획" : `${t.name} 관점의 실행안`,
+      instruction: `${t.name}의 시각으로 지시를 처리할 초안을 작성`,
+    };
+  });
+  return { summary: `데모 계획: ${steps.length}명에게 나눠 맡깁니다.`, newTeam: null, steps };
+}
+async function demoStream(text, onText, signal) {
+  let acc = "";
+  for (const chunk of text.match(/[\s\S]{1,12}/g)) {
+    if (signal && signal.aborted) throw { code: "cancelled", text: acc };
+    await new Promise((r) => setTimeout(r, 85));
+    acc += chunk; onText && onText({ text: acc, delta: chunk });
+  }
+  return acc;
+}
+const demoOutput = (st, order) => `## ${st.title}\n\n> 데모 모드 결과예요. 실제 AI가 쓴 내용이 아니에요. claude.ai에서 이 페이지를 열면 내 Claude 구독으로 실제 작업이 진행돼요.\n\n- 지시: ${order}\n- 담당: ${st.staffName} (${st.teamName})\n\n| 항목 | 초안 |\n|---|---|\n| 목표 | 확인 필요 |\n| 일정 | 1주차 조사 → 2주차 실행안 → 3주차 검토 (가정) |\n| 산출물 | 문서 1종, 체크리스트 1종 |\n`;
+
+/* ---------- run an order end to end ---------- */
+async function runOrder(order) {
+  if (running) return;
+  order = order.trim();
+  if (!order) { toast("총괄에게 맡길 일을 적어 주세요."); $("#orderInput").focus(); return; }
+  const task = { id: "t-" + Date.now().toString(36), order, createdAt: Date.now(), status: "planning", summary: "", steps: [], final: "", error: "", hires: [] };
+  state.tasks.unshift(task);
+  running = { task, ctls: new Set(), stopped: false };
+  const ctl = () => { const c = new AbortController(); running.ctls.add(c); if (running.stopped) c.abort(); return c.signal; };
+  setRunning(true); renderCurrent(); renderHistory();
+  office.setBusy("chief", "지시를 검토하고 업무를 나누는 중");
+  const demo = ai.kind === "demo";
+  try {
+    const plan = demo ? (await new Promise((r) => setTimeout(r, 1800)), demoPlan(order)) : await ai.json(planPrompt(order), { signal: ctl() });
+    if (running.stopped) throw { code: "cancelled" };
+    applyPlan(task, plan);
+    store.saveOffice(); office.build(); renderTeams();
+    task.status = "working"; store.saveTask(task); renderCurrent();
+    office.setBusy("chief", "담당자에게 업무를 전달했어요");
+    for (let i = 0; i < task.steps.length; i++) {
+      const st = task.steps[i];
+      st.status = "working"; renderCurrent();
+      office.handoff("chief", st.staffId);
+      office.setBusy(st.staffId, st.title);
+      const onText = ({ text }) => { st.output = text; livePreview(i, text); };
+      st.output = demo ? await demoStream(demoOutput(st, order), onText, ctl()) : await ai.text(staffPrompt(task, i), { onText, signal: ctl() });
+      st.status = "done"; office.setBusy(st.staffId, null); office.handoff(st.staffId, "chief");
+      store.saveTask(task); renderCurrent();
+    }
+    task.status = "reviewing"; renderCurrent();
+    office.setBusy("chief", "결과물을 모아 최종 보고서 작성 중");
+    const onFinal = ({ text }) => { task.final = text; liveFinal(text); };
+    task.final = demo ? await demoStream(`## 한 줄 요약\n데모 모드로 흐름만 보여드렸어요.\n\n## 핵심 결과\n${task.steps.map((s) => `- ${s.staffName}: ${s.title}`).join("\n")}\n\n## 확인이 필요한 부분\n- 실제 결과를 받으려면 claude.ai에서 이 페이지를 여세요. 보는 사람의 Claude 구독으로 동작합니다.\n`, onFinal, ctl()) : await ai.text(finalPrompt(task), { onText: onFinal, signal: ctl() });
+    task.status = "done";
+    toast("총괄이 최종 보고를 올렸어요.");
+  } catch (e) {
+    console.warn(e);
+    const cancelled = running.stopped || (e && e.code === "cancelled");
+    task.status = cancelled ? "stopped" : "error";
+    task.error = cancelled ? "대표가 중지했어요." : errCopy(e);
+    task.steps.forEach((s) => { if (s.status === "working") { s.status = cancelled ? "stopped" : "error"; if (e && e.text && !s.output) s.output = e.text; } });
+    if (!cancelled) toast(task.error);
+  } finally {
+    office.clearBusy();
+    running = null; setRunning(false);
+    if (task.status !== "done") $("#orderInput").value = task.order;
+    store.saveTask(task); renderCurrent(); renderHistory(); renderTeams();
+  }
+}
+function applyPlan(task, plan) {
+  if (!plan || !Array.isArray(plan.steps) || !plan.steps.length) throw { code: "bad_plan" };
+  let newTeamId = null;
+  if (plan.newTeam && plan.newTeam.name) {
+    const same = state.teams.find((t) => t.name === String(plan.newTeam.name));
+    if (same) newTeamId = same.id;
+    else if (state.teams.length < MAX_TEAMS) { const t = addTeam(plan.newTeam.name, plan.newTeam.desc); newTeamId = t.id; task.hires.push("새 팀 " + t.name); }
+  }
+  if (!state.teams.length) addTeam("일반팀", "여러 업무를 두루 맡는 팀");
+  task.summary = String(plan.summary || "");
+  task.steps = plan.steps.slice(0, 6).map((s) => {
+    let p = s && s.staffId ? state.staff.find((x) => x.id === s.staffId) : null;
+    let hired = false;
+    if (!p) {
+      const ns = (s && s.newStaff) || {};
+      let teamId = ns.teamId === "NEW" ? newTeamId : (teamOf(ns.teamId) || state.teams.find((t) => t.name === ns.teamId) || {}).id;
+      if (!teamId) teamId = newTeamId || state.teams[0].id;
+      if (staffOf(teamId).length >= MAX_STAFF) p = staffOf(teamId).find((x) => x.role === ns.role) || staffOf(teamId)[0];
+      else { p = addStaff(teamId, ns.name, ns.role, ns.expertise); hired = true; task.hires.push(p.name); }
+    }
+    const t = teamOf(p.teamId);
+    return { staffId: p.id, staffName: p.name, role: p.role, expertise: p.expertise, teamId: p.teamId, teamName: t ? t.name : "", title: String((s && s.title) || "업무").slice(0, 60), instruction: String((s && s.instruction) || ""), status: "queued", output: "", hired };
+  });
+}
+function stopRun() {
+  if (!running) return;
+  running.stopped = true; running.ctls.forEach((c) => c.abort());
+  $("#runNote").textContent = "중지하는 중…";
+}
+
+/* ---------- panel rendering ---------- */
+const STATUS = { queued: "대기", planning: "계획 중", working: "작업 중", reviewing: "보고서 작성", done: "완료", error: "오류", stopped: "중지됨" };
+const pill = (s) => `<span class="pill ${s}">${STATUS[s] || s}</span>`;
+const av = (name, color) => `<div class="avatar" style="background:${esc(color)}">${esc(initial(name))}</div>`;
+
+function setRunning(on) {
+  $("#runBtn").disabled = on; $("#stopBtn").hidden = !on; $("#orderInput").disabled = on;
+  $("#runNote").textContent = on ? "직원들이 일하는 중이에요. 3D 사무실에서 진행을 볼 수 있어요." : "Ctrl/⌘ + Enter로도 보낼 수 있어요.";
+  if (!on) $("#orderInput").value = "";
+}
+function taskCard(task, { live } = {}) {
+  const steps = task.steps.map((s, i) => `
+    <li class="step">
+      ${av(s.staffName, teamColor(s.teamId))}
+      <div class="who"><b>${esc(s.staffName)}</b><span>${esc(s.teamName)} · ${esc(s.role)}</span>${s.hired ? '<span class="pill new">신규 채용</span>' : ""}${pill(s.status)}</div>
+      <div class="title">${esc(s.title)}</div>
+      ${live && (s.status === "working" || (s.output && s.status !== "done")) ? `<div class="preview" id="prev-${i}">${esc((s.output || "생각하는 중…").slice(-420))}</div>` : ""}
+    </li>`).join("");
+  const final = task.final || task.status === "reviewing" ? `
+    <div class="final">
+      <div class="row"><strong class="grow">총괄 최종 보고</strong>${task.status === "done" ? `<button class="btn sm" type="button" data-open-task="${esc(task.id)}">전체 보기</button>` : ""}</div>
+      <div class="md" id="finalPrev">${task.final ? md(task.final) : '<p class="note">보고서를 쓰는 중…</p>'}</div>
+    </div>` : "";
+  return `<div class="taskcard">
+    <div class="head">
+      <div class="row">${pill(task.status)}<span class="cap">${fmtDate(task.createdAt)}</span></div>
+      <p class="order">${esc(task.order)}</p>
+      ${task.summary ? `<p class="summary">총괄: ${esc(task.summary)}</p>` : task.status === "planning" ? '<p class="summary">총괄이 업무를 나누고 있어요…</p>' : ""}
+      ${task.hires && task.hires.length ? `<p class="summary">이번에 채용: ${esc(task.hires.join(", "))}</p>` : ""}
+      ${task.error ? `<p class="summary" style="color:var(--bad)">${esc(task.error)}</p>` : ""}
+    </div>
+    ${steps ? `<ol class="steps">${steps}</ol>` : ""}
+    ${final}
+  </div>`;
+}
+function renderCurrent() {
+  const t = running ? running.task : state.tasks[0];
+  $("#current").innerHTML = t ? taskCard(t, { live: !!running }) : `<div class="empty">아직 맡긴 일이 없어요. 위에 지시를 적으면 총괄이 팀을 꾸려 일을 시작해요.</div>`;
+}
+function livePreview(i, text) {
+  const el = document.getElementById("prev-" + i);
+  if (el) el.textContent = text.slice(-420); else renderCurrent();
+}
+function liveFinal(text) {
+  const el = $("#finalPrev");
+  if (!el) return renderCurrent();
+  clearTimeout(liveFinal._t); liveFinal._t = setTimeout(() => { el.innerHTML = md(text); }, 120);
+}
+function renderTeams() {
+  $("#staffCount").textContent = state.staff.length;
+  $("#teamList").innerHTML = state.teams.length ? state.teams.map((t) => {
+    const ms = staffOf(t.id);
+    return `<div class="team">
+      <header><span class="swatch" style="background:${esc(t.color)}"></span><h3>${esc(t.name)}</h3><span class="cap">${ms.length}/${MAX_STAFF}</span>
+        <button class="btn sm" type="button" data-team="${esc(t.id)}">상세</button></header>
+      ${t.desc ? `<p class="desc">${esc(t.desc)}</p>` : ""}
+      <div class="members">${ms.length ? ms.map((p) => `<button type="button" class="member" data-staff="${esc(p.id)}">${av(p.name, t.color)}${esc(p.name)}<span>${esc(p.role)}</span></button>`).join("") : '<span class="note">아직 직원이 없어요. 총괄이 필요할 때 채용해요.</span>'}</div>
+    </div>`;
+  }).join("") : '<div class="empty">팀이 없어요. 아래에서 팀을 만들어 주세요.</div>';
+}
+function renderHistory() {
+  $("#histCount").textContent = state.tasks.length || "";
+  $("#historyList").innerHTML = state.tasks.length ? `<div style="display:flex;flex-direction:column;gap:8px">${state.tasks.map((t) => `
+    <button type="button" class="hist" data-open-task="${esc(t.id)}">
+      <span class="o">${esc(t.order)}</span>${pill(t.status)}
+      <span class="m">${fmtDate(t.createdAt)} · 참여 ${t.steps.length}명${t.steps.length ? " (" + esc(t.steps.map((s) => s.staffName).join(", ")) + ")" : ""}</span>
+    </button>`).join("")}</div>` : '<div class="empty">끝난 작업이 여기에 쌓여요.</div>';
+}
+function renderMode() {
+  const chip = $("#modeChip"), txt = $("#modeText");
+  chip.classList.toggle("live", ai.kind !== "demo"); chip.classList.toggle("demo", ai.kind === "demo");
+  txt.textContent = ai.kind === "claude" ? "내 Claude 구독으로 연결됨" : "데모 모드";
+  const mp = $("#modePane");
+  mp.hidden = ai.kind !== "demo";
+  if (ai.kind === "demo") mp.innerHTML = `<div class="keybox"><strong>지금은 데모 모드예요</strong><span class="note">이 페이지가 claude.ai 밖에서 열려 실제 AI 대신 예시 흐름만 보여줘요. claude.ai에서 열면 별도 API 키 없이 보는 사람의 Claude 구독으로 총괄과 직원이 실제로 일합니다. 첫 지시 때 Claude 사용 허용을 묻는 창이 한 번 뜹니다.</span></div>`;
+}
+
+/* ---------- drawer ---------- */
+let drawerCopyText = "";
+function openDrawer(title, html, copyText) {
+  $("#drawerTitle").textContent = title; $("#drawerBody").innerHTML = html;
+  drawerCopyText = copyText || ""; $("#drawerCopy").hidden = !copyText;
+  $("#drawer").hidden = false; $("#drawerBg").hidden = false; $("#drawerClose").focus();
+}
+function closeDrawer() { $("#drawer").hidden = true; $("#drawerBg").hidden = true; }
+function openTask(id) {
+  const t = state.tasks.find((x) => x.id === id); if (!t) return;
+  const steps = t.steps.map((s) => `<details class="out"><summary>${av(s.staffName, teamColor(s.teamId))}<b>${esc(s.staffName)}</b><span class="note">${esc(s.teamName)} · ${esc(s.title)}</span>${pill(s.status)}</summary><div class="md">${s.output ? md(s.output) : '<p class="note">결과가 없어요.</p>'}</div></details>`).join("");
+  const copy = `# ${t.order}\n\n${t.final || ""}\n\n---\n\n${t.steps.map((s) => `# ${s.staffName} (${s.teamName}) — ${s.title}\n\n${s.output}`).join("\n\n")}`;
+  openDrawer("작업 결과", `
+    <div class="row">${pill(t.status)}<span class="cap">${fmtDate(t.createdAt)}</span></div>
+    <p style="margin:0;font-weight:600">${esc(t.order)}</p>
+    ${t.summary ? `<p class="note" style="margin:0">총괄의 계획: ${esc(t.summary)}</p>` : ""}
+    ${t.error ? `<p class="note" style="margin:0;color:var(--bad)">${esc(t.error)}</p>` : ""}
+    ${t.final ? `<section><p class="section-title">총괄 최종 보고</p><div class="md">${md(t.final)}</div></section>` : ""}
+    ${steps ? `<p class="section-title">직원별 결과물</p>${steps}` : ""}
+    <div class="row"><button class="btn sm" type="button" data-reorder="${esc(t.id)}">같은 지시 다시 내리기</button><span class="grow"></span><button class="btn sm danger" type="button" data-del-task="${esc(t.id)}">기록 삭제</button></div>`, copy);
+}
+function openStaff(id) {
+  if (id === "chief") {
+    return openDrawer("총괄 · " + CHIEF.name, `<dl class="kv"><dt>역할</dt><dd>지시를 하위 업무로 나누고, 팀에 직원을 채용·배치하고, 결과를 최종 보고서로 정리해요.</dd><dt>맡은 지시</dt><dd>${state.tasks.length}건</dd></dl><p class="note">총괄에게 일을 맡기려면 오른쪽 ‘지시’ 탭에 적어 주세요.</p>`);
+  }
+  const p = person(id); if (!p) return;
+  const t = teamOf(p.teamId);
+  const jobs = state.tasks.flatMap((task) => task.steps.filter((s) => s.staffId === id).map((s) => ({ task, s })));
+  openDrawer(p.name, `
+    <dl class="kv"><dt>팀</dt><dd>${esc(t ? t.name : "-")}</dd><dt>직함</dt><dd>${esc(p.role)}</dd><dt>전문 분야</dt><dd>${esc(p.expertise || "-")}</dd><dt>입사</dt><dd>${fmtDate(p.hiredAt)}</dd><dt>맡은 업무</dt><dd>${jobs.length}건</dd></dl>
+    ${jobs.map(({ task, s }) => `<details class="out"><summary><b>${esc(s.title)}</b><span class="note">${esc(task.order.slice(0, 40))}</span>${pill(s.status)}</summary><div class="md">${s.output ? md(s.output) : '<p class="note">결과가 없어요.</p>'}</div></details>`).join("")}
+    <div class="row"><span class="grow note">퇴사 처리해도 지난 결과물은 기록에 남아요.</span><button class="btn sm danger" type="button" data-fire="${esc(p.id)}" ${running ? "disabled" : ""}>퇴사 처리</button></div>`);
+}
+function openTeam(id) {
+  const t = teamOf(id); if (!t) return;
+  const ms = staffOf(id);
+  openDrawer(t.name, `
+    <label class="note" for="etName">팀 이름</label><input type="text" id="etName" maxlength="20" value="${esc(t.name)}">
+    <label class="note" for="etDesc">하는 일</label><textarea id="etDesc" maxlength="200">${esc(t.desc)}</textarea>
+    <div class="row"><button class="btn primary sm" type="button" data-save-team="${esc(id)}">저장</button></div>
+    <p class="section-title">직원 ${ms.length}명</p>
+    <div class="members">${ms.map((p) => `<button type="button" class="member" data-staff="${esc(p.id)}">${av(p.name, t.color)}${esc(p.name)}<span>${esc(p.role)}</span></button>`).join("") || '<span class="note">아직 직원이 없어요.</span>'}</div>
+    <div class="row"><span class="grow note">팀을 없애면 소속 직원도 함께 퇴사 처리돼요.</span><button class="btn sm danger" type="button" data-del-team="${esc(id)}" ${running ? "disabled" : ""}>팀 삭제</button></div>`);
+}
+// two-step confirm inside the page (no confirm() dialogs in the viewer)
+function confirmClick(btn, label) {
+  if (btn.dataset.armed === "1") return true;
+  btn.dataset.armed = "1"; const old = btn.textContent; btn.textContent = label;
+  setTimeout(() => { btn.dataset.armed = ""; btn.textContent = old; }, 3000);
+  return false;
+}
+
+/* ---------- 3D office (엔진은 office3d.js) ---------- */
+const office = (window.Office3D ? window.Office3D.create({
+  canvas: $("#scene"), labelsEl: $("#labels"), stage: $("#scene").parentElement,
+  getTeams: () => state.teams, staffOf, chief: CHIEF, maxStaff: MAX_STAFF, esc, reduceMotion,
+  onPick: (kind, id) => (kind === "staff" ? openStaff(id) : openTeam(id)),
+}) : null) || { ok: false, build() {}, setBusy() {}, clearBusy() {}, handoff() {}, hire() {}, resetView() {}, follow() {}, setDirector() {} };
+window.__office = office; // 디버그·테스트용
+
+/* ---------- events ---------- */
+document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
+  document.querySelectorAll(".tabs button").forEach((x) => x.setAttribute("aria-selected", String(x === b)));
+  ["order", "teams", "history"].forEach((k) => { $("#pane-" + k).hidden = k !== b.dataset.tab; });
+  lsSet("ai-office-tab", b.dataset.tab);
+}));
+$("#examples").innerHTML = EXAMPLES.map((e, i) => `<button type="button" data-ex="${i}">${esc(e.length > 34 ? e.slice(0, 34) + "…" : e)}</button>`).join("");
+$("#ntColors").innerHTML = PALETTE.map((c, i) => `<label><input type="radio" name="ntColor" value="${c}" ${i === 0 ? "checked" : ""} aria-label="색상 ${i + 1}"><span style="background:${c}"></span></label>`).join("");
+$("#runBtn").addEventListener("click", () => runOrder($("#orderInput").value));
+$("#stopBtn").addEventListener("click", stopRun);
+$("#orderInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runOrder(e.target.value); } });
+$("#resetView").addEventListener("click", () => office.resetView());
+$("#dirToggle").checked = !reduceMotion;
+$("#dirToggle").addEventListener("change", (e) => office.setDirector(e.target.checked));
+$("#tierSel").addEventListener("change", (e) => { tier = e.target.value; store.saveOffice(); });
+$("#drawerClose").addEventListener("click", closeDrawer);
+$("#drawerBg").addEventListener("click", closeDrawer);
+$("#drawerCopy").addEventListener("click", async () => {
+  try { await navigator.clipboard.writeText(drawerCopyText); toast("결과를 복사했어요."); }
+  catch { const ta = document.createElement("textarea"); ta.value = drawerCopyText; $("#drawerBody").prepend(ta); ta.select(); toast("선택된 텍스트를 복사해 주세요."); }
+});
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !$("#drawer").hidden) closeDrawer(); });
+$("#newTeamForm").addEventListener("submit", (e) => {
+  e.preventDefault();
+  const name = $("#ntName").value.trim(); if (!name) return;
+  if (state.teams.length >= MAX_TEAMS) return toast(`팀은 최대 ${MAX_TEAMS}개까지 만들 수 있어요.`);
+  if (state.teams.some((t) => t.name === name)) return toast("같은 이름의 팀이 이미 있어요.");
+  const color = (document.querySelector('input[name="ntColor"]:checked') || {}).value;
+  addTeam(name, $("#ntDesc").value.trim(), color);
+  $("#ntName").value = ""; $("#ntDesc").value = "";
+  store.saveOffice(); office.build(); renderTeams(); toast(`${name}을(를) 만들었어요.`);
+});
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-ex],[data-staff],[data-team],[data-open-task],[data-del-task],[data-fire],[data-del-team],[data-save-team],[data-reorder]");
+  if (!el) return;
+  const d = el.dataset;
+  if (d.ex != null) { $("#orderInput").value = EXAMPLES[+d.ex]; $("#orderInput").focus(); }
+  else if (d.staff) openStaff(d.staff);
+  else if (d.team) openTeam(d.team);
+  else if (d.openTask) openTask(d.openTask);
+  else if (d.reorder) { const t = state.tasks.find((x) => x.id === d.reorder); closeDrawer(); document.querySelector('[data-tab="order"]').click(); $("#orderInput").value = t ? t.order : ""; $("#orderInput").focus(); }
+  else if (d.delTask) {
+    if (!confirmClick(el, "한 번 더 누르면 삭제")) return;
+    state.tasks = state.tasks.filter((t) => t.id !== d.delTask); store.deleteTask(d.delTask);
+    closeDrawer(); renderHistory(); renderCurrent(); toast("기록을 삭제했어요.");
+  } else if (d.fire) {
+    if (!confirmClick(el, "한 번 더 누르면 퇴사")) return;
+    state.staff = state.staff.filter((p) => p.id !== d.fire); store.saveOffice(); office.build(); renderTeams(); closeDrawer(); toast("퇴사 처리했어요.");
+  } else if (d.delTeam) {
+    if (!confirmClick(el, "한 번 더 누르면 삭제")) return;
+    state.teams = state.teams.filter((t) => t.id !== d.delTeam); state.staff = state.staff.filter((p) => p.teamId !== d.delTeam);
+    store.saveOffice(); office.build(); renderTeams(); closeDrawer(); toast("팀을 삭제했어요.");
+  } else if (d.saveTeam) {
+    const t = teamOf(d.saveTeam); if (!t) return;
+    const name = $("#etName").value.trim(); if (!name) return toast("팀 이름을 적어 주세요.");
+    t.name = name.slice(0, 20); t.desc = $("#etDesc").value.trim().slice(0, 200);
+    store.saveOffice(); office.build(); renderTeams(); $("#drawerTitle").textContent = t.name; toast("팀 정보를 저장했어요.");
+  }
+});
+
+/* ---------- boot ---------- */
+(async function boot() {
+  const tab = lsGet("ai-office-tab"); if (tab && tab !== "order") { const b = document.querySelector(`[data-tab="${tab}"]`); if (b) b.click(); }
+  seedDefaults(); office.build(); renderTeams(); renderHistory(); renderCurrent();
+  await Promise.all([store.init(), ai.init()]);
+  renderMode();
+  const { office: saved, tasks } = await store.load();
+  if (saved && Array.isArray(saved.teams)) {
+    state.teams = saved.teams; state.staff = Array.isArray(saved.staff) ? saved.staff : [];
+    if (saved.tier) { tier = saved.tier; $("#tierSel").value = tier; }
+  } else store.saveOffice();
+  state.tasks = (tasks || []).filter((t) => t && t.id).sort((a, b) => b.createdAt - a.createdAt);
+  state.tasks.forEach((t) => { if (["planning", "working", "reviewing"].includes(t.status)) { t.status = "stopped"; t.error = "페이지를 닫아 작업이 중단됐어요."; } });
+  office.build(); renderTeams(); renderHistory(); renderCurrent();
+})();
+})();
+</script>
+
+</body>
+</html>

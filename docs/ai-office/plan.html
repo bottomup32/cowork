@@ -1,0 +1,319 @@
+<title>AI 오피스 기획서</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Noto+Sans+KR:wght@400;500;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout: a single reading column (≈72ch) with a sticky section index on wide screens; tables and the diagram may run wider. */
+:root {
+  --bg: #f6f7f9;
+  --surface: #ffffff;
+  --surface-2: #eef1f5;
+  --ink: #15202b;
+  --muted: #5b6978;
+  --line: #d9dfe6;
+  --accent: #116dff;
+  --accent-ink: #ffffff;
+  --accent-soft: #e4eeff;
+  --warn: #9a6a00;
+  --warn-soft: #fff4d6;
+  --ok: #2b7a4b;
+  --font-display: "DM Sans", "Noto Sans KR", system-ui, sans-serif;
+  --font-body: "Noto Sans KR", "DM Sans", "Apple SD Gothic Neo", "Malgun Gothic", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0f141a; --surface: #161c24; --surface-2: #1e2630; --ink: #e7ecf2; --muted: #9aa8b7; --line: #2c3642;
+    --accent: #5a9bff; --accent-ink: #061a3a; --accent-soft: #15284a; --warn: #e5b94a; --warn-soft: #3a2f10; --ok: #6ccf8f;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0f141a; --surface: #161c24; --surface-2: #1e2630; --ink: #e7ecf2; --muted: #9aa8b7; --line: #2c3642;
+  --accent: #5a9bff; --accent-ink: #061a3a; --accent-soft: #15284a; --warn: #e5b94a; --warn-soft: #3a2f10; --ok: #6ccf8f;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--ink); font-family: var(--font-body); font-size: 15px; line-height: 1.7; margin: 0; }
+.wrap { max-width: 1120px; margin: 0 auto; padding-block: 32px 80px; padding-inline: 16px; display: grid; grid-template-columns: 220px minmax(0, 1fr); gap: 40px; }
+nav.toc { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); align-self: start; font-size: 13px; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+nav.toc a { color: var(--muted); text-decoration: none; display: block; padding: 2px 0 2px 10px; border-left: 2px solid var(--line); }
+nav.toc a:hover { color: var(--ink); border-left-color: var(--accent); }
+nav.toc .eyebrow { font-family: var(--font-display); font-size: 11px; letter-spacing: .1em; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+main { min-width: 0; }
+header.hero { border-bottom: 1px solid var(--line); padding-bottom: 24px; margin-bottom: 32px; }
+.eyebrow { font-family: var(--font-display); font-size: 12px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+h1 { font-family: var(--font-display); font-size: 34px; line-height: 1.2; margin: 8px 0 12px; letter-spacing: -.01em; text-wrap: balance; }
+.lede { font-size: 17px; color: var(--muted); max-width: 70ch; margin: 0 0 16px; }
+.meta { display: flex; flex-wrap: wrap; gap: 8px 18px; font-size: 13px; color: var(--muted); font-family: var(--font-display); }
+.legend { background: var(--surface-2); border-left: 3px solid var(--accent); padding: 10px 14px; border-radius: 0 8px 8px 0; font-size: 13.5px; color: var(--muted); margin: 0 0 8px; }
+section { margin-bottom: 44px; }
+h2 { font-family: var(--font-display); font-size: 22px; margin: 0 0 14px; padding-top: 8px; letter-spacing: -.01em; text-wrap: balance; }
+h2 small { font-weight: 500; color: var(--muted); font-size: 13px; margin-left: 8px; }
+h3 { font-family: var(--font-display); font-size: 16px; margin: 22px 0 8px; }
+p { margin: 0 0 12px; max-width: 76ch; }
+ul, ol { margin: 0 0 12px; padding-left: 1.3em; max-width: 80ch; }
+li { margin-bottom: 4px; }
+li > ul { margin-top: 4px; }
+b, strong { font-weight: 700; }
+.tag { display: inline-block; font-family: var(--font-display); font-size: 11px; font-weight: 600; padding: 1px 7px; border-radius: 999px; vertical-align: middle; }
+.tag.est { background: var(--warn-soft); color: var(--warn); }
+.tag.src { background: var(--accent-soft); color: var(--accent); }
+.tag.ok { background: var(--surface-2); color: var(--ok); border: 1px solid var(--line); }
+.tbl { overflow-x: auto; margin: 10px 0 16px; border: 1px solid var(--line); border-radius: 10px; }
+table { border-collapse: collapse; width: 100%; min-width: 640px; font-size: 13.5px; }
+th, td { text-align: left; vertical-align: top; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { background: var(--surface-2); font-family: var(--font-display); font-weight: 600; font-size: 12.5px; letter-spacing: .02em; }
+tr:last-child td { border-bottom: 0; }
+td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 12px; margin: 10px 0 16px; }
+.card { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; }
+.card h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: 14px; }
+.card p { font-size: 13.5px; color: var(--muted); margin: 0; }
+.card .big { font-family: var(--font-display); font-size: 24px; font-weight: 700; letter-spacing: -.01em; margin: 2px 0 4px; color: var(--ink); font-variant-numeric: tabular-nums; }
+.flow { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; overflow-x: auto; margin: 10px 0 16px; }
+pre.mermaid { margin: 0; min-width: 520px; }
+.callout { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin: 12px 0 16px; }
+.callout.warn { border-color: var(--warn); }
+.callout h4 { margin: 0 0 6px; font-family: var(--font-display); font-size: 14px; }
+.steps { counter-reset: s; list-style: none; padding: 0; margin: 10px 0 16px; display: grid; gap: 8px; }
+.steps li { counter-increment: s; display: grid; grid-template-columns: 30px minmax(0, 1fr); gap: 10px; background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 10px 12px; }
+.steps li::before { content: counter(s); font-family: var(--font-display); font-weight: 700; color: var(--accent); background: var(--accent-soft); border-radius: 8px; width: 30px; height: 30px; display: grid; place-items: center; font-size: 13px; }
+.steps li b { display: block; }
+.steps li span { color: var(--muted); font-size: 13.5px; }
+code { font-family: var(--font-mono); font-size: 12.5px; background: var(--surface-2); padding: 1px 5px; border-radius: 4px; }
+footer { border-top: 1px solid var(--line); padding-top: 16px; color: var(--muted); font-size: 13px; }
+a { color: var(--accent); }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (max-width: 860px) {
+  .wrap { grid-template-columns: minmax(0, 1fr); gap: 20px; padding-block: 20px 60px; }
+  nav.toc { position: static; }
+  nav.toc ol { flex-direction: row; flex-wrap: wrap; gap: 6px 12px; }
+  nav.toc a { border-left: 0; padding: 0; }
+  h1 { font-size: 26px; }
+}
+</style>
+
+<div class="wrap">
+<nav class="toc" aria-label="목차">
+  <div class="eyebrow">목차</div>
+  <ol>
+    <li><a href="#premise">0. 결정된 전제</a></li>
+    <li><a href="#position">1. 정의와 포지셔닝</a></li>
+    <li><a href="#customers">2. 고객과 첫 주문</a></li>
+    <li><a href="#product">3. 제품 구조</a></li>
+    <li><a href="#pricing">4. 요금제</a></li>
+    <li><a href="#plan60">5. 60일 매출 계획</a></li>
+    <li><a href="#arch">6. 아키텍처</a></li>
+    <li><a href="#design">7. 디자인 방향</a></li>
+    <li><a href="#roadmap">8. 로드맵·공수</a></li>
+    <li><a href="#risks">9. 리스크</a></li>
+    <li><a href="#decisions">10. 결정 요청</a></li>
+  </ol>
+</nav>
+
+<main>
+<header class="hero">
+  <div class="eyebrow">TecAce BLG · AI 오피스 · 기획서 v0.1</div>
+  <h1>총괄에게 시키면 팀이 꾸려지고, 결과물이 나오는 사무실</h1>
+  <p class="lede">AI 직원 팀을 눈으로 보며 운영하는 관제실. 대표가 지시하면 총괄이 일을 나누고 직원을 뽑아 앉히고, 리뷰 룸을 거친 결과물을 대표가 승인 한 번으로 받는다.</p>
+  <div class="meta"><span>작성 2026-10-12</span><span>상태: 초안 · 대표 확인 전</span><span>근거: 오픈소스 지형도 · 시장조사 · 3D 기술 타당성 · 회의록 · AXKH</span></div>
+</header>
+
+<p class="legend">표기 규칙 — 근거가 있는 문장은 출처를 붙였습니다. <span class="tag est">추정</span>은 제 판단, <span class="tag est">미확인</span>은 2차 출처라 재확인이 필요한 수치, <span class="tag src">AXKH</span>·<span class="tag src">회의</span>는 사내 근거입니다. AXKH의 "확실하지 않으면 단정하지 않는다" 원칙을 따릅니다.</p>
+
+<section id="premise">
+  <h2>0. 이미 결정된 전제 <small>대표 답변</small></h2>
+  <div class="tbl"><table>
+    <tr><th style="width:160px">항목</th><th>결정</th></tr>
+    <tr><td>1차 시장</td><td><b>미국 한인 SMB 먼저.</b> 기존 고객·세미나 채널·AX Billing(Stripe)·영어 포털을 그대로 활용. 한국은 2027 바우처 파이프라인으로 후순위.</td></tr>
+    <tr><td>수익 모델</td><td><b>구독 + 구축·컨설팅 결합</b></td></tr>
+    <tr><td>배포 형태</td><td><b>독립 웹 서비스</b> (Netlify + Supabase + 결제)</td></tr>
+    <tr><td>3D 톤</td><td><b>전문적·절제된 사무실.</b> "유치함" 금지, 신뢰감 있는 익숙한 UI.</td></tr>
+    <tr><td>모델 정책</td><td><b>총괄·최종 보고 = Opus 5.5, 직원·리뷰 = Sonnet 5.5</b></td></tr>
+    <tr><td>데모</td><td><b>API 키 없이 보는 사람의 claude.ai 구독으로 동작</b> (아티팩트 v2 반영 완료)</td></tr>
+  </table></div>
+</section>
+
+<section id="position">
+  <h2>1. 한 줄 정의와 포지셔닝</h2>
+  <p><b>"AI 직원 팀을 눈으로 보며 운영하는 관제실."</b> 3D 사무실은 "지금 누가 무엇을 하고, 어디서 멈췄고, 무엇이 승인을 기다리는지"를 보여주는 <b>관찰·승인 레이어</b>이지 장식이 아니다.</p>
+  <ul>
+    <li><b>TecAce 안에서의 자리:</b> 이미 소개 자료가 있는 Managed Agent Service(역할별 AI 직원 팀)의 "보이는 프런트엔드"이자 Hermes 롤 베이스 실험·Notion Mission Control의 후속 제품. <span class="tag src">AXKH 관리형 에이전트 서비스 소개 2026</span> <span class="tag src">회의 2026-06-15</span></li>
+    <li><b>메시지 뼈대</b>는 그 자료의 세 가치를 잇는다: <b>부린다</b>(자연어로 지시) · <b>알아서 한다</b>(스케줄대로 자율 작업·보고) · <b>믿고 안 샌다</b>(기업 지식 기준 답변·가드레일·거버넌스). 도입 사다리도 같다: Day-1 웹 모니터링 브리핑 → Week-2 시스템 연결(ERP·노션·Shopify) → Month-1 지식 베이스 정돈·가드레일.</li>
+    <li><b>메시지 원칙</b>(영업 플레이북 Play 01, 'AI'를 주어에서 뺀다): "매주 반복되는 보고서·콘텐츠·리서치에 쓰는 시간을 AI 부서가 대신하고, 당신은 승인만 합니다. 지금 그 일에 몇 시간, 얼마가 들어가는지부터 보겠습니다."</li>
+    <li><b>하지 않을 것:</b> "직원 대체" 마케팅, 귀여운 캐릭터로 파는 것, 상담봇(카카오·KT와 경쟁), 콜드 아웃바운드 자동화.</li>
+  </ul>
+  <h3>왜 지금, 어디가 비어 있나</h3>
+  <div class="cards">
+    <div class="card"><h4>상태 모델은 있지만 보이지 않는다</h4><p>Paperclip(100.9k★, MIT): 조직도·CEO·이슈 트리·승인·예산. 시각 없음, 조직도는 수동.</p></div>
+    <div class="card"><h4>보이지만 파이프라인이 없다</h4><p>Claw3D·agent-office·hermes-virtual-office: 3D 관찰 레이어만. 총괄·채용·산출물 없음.</p></div>
+    <div class="card"><h4>공백</h4><p>"지시 → 자동 채용·팀 편성 → 산출물 → 리뷰 → 승인"을 3D로 보여주는 제품은 조사 범위(37개)에 없었다.</p></div>
+    <div class="card"><h4>상용 제품의 1위 불만</h4><p>크레딧 소진·불투명 과금·실패 작업 과금(Sintra·Genspark·Manus). → 정액 + 산출물 크레딧 + 실패 무과금.</p></div>
+  </div>
+  <div class="callout warn"><h4>직접 경쟁 주의</h4><p>한컴 노마디안: 3D 룸의 AI 직원 캐릭터, 2026.12 미국 베타 → 2027 유료화, 한국은 그 다음 <span class="tag est">2차 출처</span>. 미국 한인 SMB에서 레퍼런스를 먼저 쌓고 한국은 바우처 창구로 들어가는 순서가 맞아 보인다 <span class="tag est">추정</span>.</p></div>
+</section>
+
+<section id="customers">
+  <h2>2. 고객과 첫 주문 <small>근거 기반</small></h2>
+  <div class="tbl"><table>
+    <tr><th style="width:36px">#</th><th style="width:200px">고객</th><th>첫 주문(오더)</th><th style="width:170px">근거</th></tr>
+    <tr><td class="num">1</td><td><b>iKamper America</b><br><span style="color:var(--muted)">유료 고객, 마케팅 자동화 SOW, BI 매뉴얼·로고 자산</span></td><td>"BI 매뉴얼대로 신제품 카드뉴스 5종 + 쇼츠 스크립트 3개 + 뉴스레터 초안(한/영), Shopify 주문 엑셀로 주간 판매 리포트" / "미·한·유럽 경쟁사 가격·업계 뉴스 주간 뉴스레터"</td><td>회의 06-15·09-18, AXKH iKamper 제안·경쟁 모니터링 뉴스레터</td></tr>
+    <tr><td class="num">2</td><td><b>Olympus Spa</b><br><span style="color:var(--muted)">Voice Agent 첫 유료 고객, 통화·보이스메일 데이터</span></td><td>"지난주 통화·보이스메일 분석 → 예약 전환율·미응답·FAQ 누락 보고 + FAQ/프롬프트 개선 초안"</td><td>회의 09-17·10-12</td></tr>
+    <tr><td class="num">3</td><td><b>시애틀 회계사 사무소</b></td><td>"클라이언트별 필요 서류 체크리스트 + 누락 알림 이메일 초안 + 전화 응대 요약"</td><td>회의 07-20·09-18</td></tr>
+    <tr><td class="num">4</td><td><b>세미나 리드 2~3곳, 보험사, 서울트레이딩</b></td><td>업종별 맞춤 데모 — "URL만 주시면 귀사 자료로 데모"</td><td>회의 07-20, Play 08</td></tr>
+    <tr><td class="num">내부</td><td><b>BLG 팀 도그푸딩</b></td><td>월간 뉴스레터, 제안서·SOW 초안, 주간 Stripe/테크스택 리서치, 회의 액션아이템→오더, CRM 팔로업</td><td>AXKH BLG AI Native Team, 회의 10-08</td></tr>
+  </table></div>
+  <p>후순위: H마트(가격 장벽·내부 구축 선회), 한국 유닉스(월 관리비 모델 실증 대상이나 결제·언어 준비 후).</p>
+</section>
+
+<section id="product">
+  <h2>3. 제품 구조 <small>4-Level 조직을 그대로 화면으로</small></h2>
+  <p>AXKH <span class="tag src">AI 에이전트 조직을 이끄는 법</span>의 구조를 제품의 뼈대로 쓴다.</p>
+  <div class="flow"><pre class="mermaid">
+flowchart LR
+  L[대표 · 인간 리더<br/>목표·기준·권한] --> C[총괄 · 조율<br/>분해 · 역할 정의 · 캐스팅]
+  C --> S[직원들 · 실행<br/>조사 · 분석 · 초안 · 산출물]
+  S --> R[5-Color 리뷰 룸<br/>Black · Red · Blue · Silver · Gold]
+  R --> N[Council 보고<br/>선택지 · 리스크 · 권고]
+  N --> A[대표 승인 · 수정 · 실행]
+  A -. 승인 게이트 .-> L
+  </pre></div>
+  <h3>3.1 핵심 화면과 메커닉</h3>
+  <ol class="steps">
+    <li><b>지시 패널</b><span>오더 입력 → 총괄이 첫 과제 채점(반복 빈도·데이터 확보·실패 비용 1~5점, Play 02)과 "현재 방식의 시간·비용" 질문을 던진 뒤 계획 제시. 계획은 대표 승인 후 실행(승인 게이트 1).</span></li>
+    <li><b>채용 의식</b><span>역할마다 기존 직원 재배치 우선, 없으면 역할 풀에서 후보 카드 3장 → 짧은 샘플 과제 → 책상 배정. 3D에선 "입구로 걸어 들어와 자리에 앉는" 장면으로만 표현(실제 이벤트에만 애니메이션).</span></li>
+    <li><b>실행</b><span>직원은 입력·출력·도구·평가기준이 명시된 역할 프로파일로 일한다. 책상 모니터 = 라이브 산출물 미리보기. 의존 과제는 순서대로, 독립 과제는 병렬.</span></li>
+    <li><b>5-Color 리뷰 룸</b><span>Black(작성자) → Red(비판, 독립 모델/프롬프트) → Blue(옹호) → Silver(도메인 기준) → Gold(의사결정 가능성). 플랜에 따라 Red만 또는 전체. 회의록(결정·리스크·수정 요청)을 남긴다. 기존 AI Supervision(환각·편향·PII 탐지 → 에스컬레이션)을 Silver에 연결할 수 있는지 확인 <span class="tag est">추정</span>.</span></li>
+    <li><b>승인 보드(손들기)</b><span>가정 수치, 외부 발송·게시·전자서명 같은 비가역 작업, 비용 임계치 초과는 캐릭터가 손을 들고 대표의 승인을 기다린다(승인 게이트 2). 승인 전엔 아무것도 밖으로 나가지 않는다.</span></li>
+    <li><b>총괄 최종 보고</b><span>한 줄 요약 / 핵심 결과 / 확인이 필요한 부분 / 다음 단계 + 출처 표기([AXKH: 노드] / [회의: 날짜·제목] / [웹]). 옵션으로 비전·돈·리스크 3언어 요약(Play 06).</span></li>
+    <li><b>설명가능성·리플레이</b><span>캐릭터 클릭 → "왜 이 상태인가"(블로커 원인·토큰 소진·권한 대기). 오늘 하루 되감기.</span></li>
+    <li><b>장부 2권과 예산</b><span>총괄 책상 위 Task Ledger(계획)·Progress Ledger(진행) = 실제 데이터 뷰. 오피스·팀·직원 예산, 80% 경고·100% 자동 정지 → 3D에선 책상 불이 꺼진다.</span></li>
+    <li><b>2D 모드</b><span>같은 상태를 리스트/칸반으로. 모바일은 보고서·승인만.</span></li>
+  </ol>
+  <h3>3.2 역할 풀 (초기 ~24개)</h3>
+  <p>기획/리서치(시장 조사·경쟁 분석·사업 기획·PM), 마케팅(카피·콘텐츠 캘린더·뉴스레터 에디터·SNS·SEO/GEO), 디자인(브랜드 가이드 준수 검토·카드뉴스 기획·발표자료 구성), 데이터/운영(엑셀·시트 분석·주간 리포트·Shopify/CRM 브리핑), 개발(요구사항·기술 검토·자동화 스크립트), 재무/회계 보조, CS(FAQ 개선·통화 분석), 비서(회의 액션아이템·사전 브리핑). 역할마다 <b>입력·출력·도구·평가기준</b>을 정의한다. 시드는 agency-agents(MIT, 232 페르소나)와 CEO 스킬 <span class="tag est">추정</span>. AXKH에는 아직 역할 프로파일이 문서화돼 있지 않아 <b>이 제품이 처음 정의하고, 승인된 프로파일을 AXKH에 되돌려 넣는다.</b></p>
+  <h3>3.3 첫 산출물 템플릿 5종</h3>
+  <ul>
+    <li>① 경쟁 모니터링 주간 뉴스레터 ② 콘텐츠 캘린더 + 카드뉴스/쇼츠 스크립트(브랜드 매뉴얼 준수) ③ 주간/월간 경영 리포트(엑셀 입력) ④ 통화·보이스메일 분석 리포트 ⑤ 제안서/SOW 초안(3막 구조)</li>
+    <li>출력은 Markdown → 2단계에서 DOCX/PPTX/XLSX 내보내기.</li>
+  </ul>
+</section>
+
+<section id="pricing">
+  <h2>4. 요금제 <small>TecAce 가격 원칙 적용</small></h2>
+  <p>원칙 <span class="tag src">AXKH 가격 정책과 협상 실행 원칙 · 가격 모델 2x2</span>: 비교 대상은 인건비·리스크 비용, 범용 AI 구독($20~30)과 비교되는 대역 금지, 원가 기준 금지, 옵션 2개 이상, 파일럿 가격이 본계약 앵커가 되지 않게, 진입 상품에서 너무 퍼주지 않기, 성사율 50% 넘으면 너무 싼 것. 과금 모델은 <b>하이브리드(오피스 정액 + 산출물 크레딧)</b>. 성과 과금은 귀속·통제 조건이 약해 쓰지 않는다.</p>
+  <div class="tbl"><table>
+    <tr><th style="width:140px">플랜</th><th style="width:170px">가격 (USD/월)</th><th>포함</th><th style="width:180px">의도</th></tr>
+    <tr><td><b>Demo</b></td><td class="num">무료</td><td>claude.ai 아티팩트(보는 사람의 구독), 또는 "URL만 주시면 귀사 자료로 데모"</td><td>퍼널 입구 (Play 08)</td></tr>
+    <tr><td><b>Starter</b></td><td class="num">$149</td><td>오피스 1, 직원 ≤6, 산출물 40건, 승인 게이트, Red 리뷰, Markdown 내보내기</td><td>1인 사업자·소규모. 범용 구독과 거리 두기</td></tr>
+    <tr><td><b>Team</b></td><td class="num">$390</td><td>직원 ≤16, 산출물 150건, 5-Color 전체, AXKH/Notion/Drive/Shopify 연동, 3석, 리플레이·감사로그, DOCX/PPTX/XLSX</td><td>5~50인 SMB의 "AI 부서"</td></tr>
+    <tr><td><b>Pilot (구축)</b></td><td class="num">$2,500~4,000 × 4~12주</td><td>역할 설계, 템플릿 3종 맞춤, 데이터 연결, 교육, 주간 1페이지 보고·월말 리뷰. 월 단위 중단, 완료된 달만 청구, 선급금·위약금 없음(A사 SOW 표준)</td><td>구축·컨설팅 매출. 본계약과 가격 분리</td></tr>
+    <tr><td><b>Managed (FDE)</b></td><td class="num">$1,500~ + Team</td><td>월 1~2회 점검, 역할·템플릿 개선, 0.2 FTE 수준</td><td>재발 매출</td></tr>
+    <tr><td>Enterprise / 온프렘</td><td class="num">견적</td><td>온프렘·역할별 프로파일 격리·AI Supervision</td><td>기존 Managed Agent Service 경로</td></tr>
+  </table></div>
+  <div class="cards">
+    <div class="card"><h4>한국 (후순위)</h4><p>회사 룰인 한국 고객 50% 할인을 적용하면 Starter ≈ ₩99,000, Team ≈ ₩269,000(1,400원 환율). 시장조사 추천대(99,000/299,000)와 근접. 원화 결제·세금계산서는 2027 바우처 시점 <span class="tag est">미확인: Stripe 한국 사업자 가입 불가 여부</span>.</p></div>
+    <div class="card"><h4>크레딧 규칙</h4><p>산출물 1건 = 승인까지 간 결과물 1개. 실패·재시도 무과금, 소진 시 차단 대신 저속 모드, 사용 내역 가시화.</p></div>
+    <div class="card"><h4>단위 원가 <span class="tag est">추정</span></h4><div class="big">$0.6~1.5 / 오더</div><p>총괄 계획 Opus 5.5 + 직원 3명 Sonnet 5.5 + 5-Color 4회 + 최종 보고 Opus 5.5, 호출당 8~15K 토큰. Starter 40건 기준 원가 $24~60 → 매출총이익 60~84%. 긴 문서·연동 데이터가 많으면 2~3배까지 커질 수 있어 예산 캡 필요.</p></div>
+  </div>
+</section>
+
+<section id="plan60">
+  <h2>5. 60일 매출 계획 <small>첫 매출 = 미국 한인 SMB</small></h2>
+  <p>목표(보수적 <span class="tag est">추정</span>): <b>유료 파일럿 2건($5,000~8,000) + 셀프서브 구독 5건(MRR $750~1,500)</b>.</p>
+  <div class="tbl"><table>
+    <tr><th style="width:70px">주차</th><th>제품</th><th>영업 (Play 07·08: 첫 100곳은 손으로)</th></tr>
+    <tr><td class="num">1~2</td><td>MVP v1: 움직이는 3D + 총괄 계획 승인 + 채용 + Red 리뷰 + 승인 보드 + 템플릿 ①②③ (아티팩트/구독 데모)</td><td>iKamper·Olympus 자료로 맞춤 데모 제작("기존 방식과 나란히")</td></tr>
+    <tr><td class="num">3~4</td><td>독립 서비스 알파: 로그인·DB·서버측 Claude·Stripe(AX Billing 지침)</td><td>진단 인터뷰(SOP-02) → 3막 제안(SOP-03) → <b>파일럿 2건 계약</b> 목표</td></tr>
+    <tr><td class="num">5~6</td><td>템플릿 ④⑤, AXKH·Meeting Note 연동, 리플레이, 내보내기</td><td>세미나 리드·네트워크 50곳 이메일(6~8문장), 데모 → 가격 문의 수 측정</td></tr>
+    <tr><td class="num">7~8</td><td>Starter/Team 셀프서브 공개, 60초 타임랩스 영상(한/영)</td><td>아웃리치 100통 누적, 파일럿 중간 리뷰, 2027 AI 바우처 공급기업 POOL 서류 준비</td></tr>
+  </table></div>
+  <p>측정: 데모→유료 파일럿 제안 전환 수, 가격 문의 수, 첫 가치까지 시간, 성사율(50% 넘으면 가격 인상).</p>
+  <h3>5.1 파일럿 설계 표준 <small>영업 플레이북 SOP-04·05 요약</small></h3>
+  <ul>
+    <li>'PoC'를 범위 좁은 타깃 파일럿으로 재정의. <b>목표 3개</b>, 성공 기준은 숫자로(기준선이 없으면 1단계 실측 후 합의). 기간 4~12주, 3단계: 진단·기준선 → 선별 구축 → 안정화.</li>
+    <li>파일럿 비용은 본계약 가격과 분리하고 본계약 가격대는 미리 합의. 월 단위 중단, 완료된 달만 청구. 범위 외 항목 명시.</li>
+    <li><b>안전 조항</b>: 읽기 전용으로 시작, 쓰기는 승인·롤백 경로 합의 후, AI 추정치를 쓰지 않는 영역 명시. 보안·AI 거버넌스 질문 답변 선제 송부.</li>
+    <li>챔피언·예산 보유자·실사용자 지명. 주간 1페이지(한 일·절감 시간·발견·다음 주), 주 1회 실데이터 시연, 월말 대면 리뷰, 종료 리뷰 선예약, 확장 스토리 선제시.</li>
+    <li>리스크 저감: 과거 데이터 백테스트, 기존 프로세스와 나란히 비교, 물량의 1%, 작은 지역. 완전 통합 전에 엑셀·이메일로 첫 가치.</li>
+    <li>→ 이 체크리스트를 <b>Pilot 플랜의 온보딩 위자드</b>로 제품화한다(목표 3개·기준선·승인 규칙·보고 주기를 오피스 설정으로 저장).</li>
+  </ul>
+</section>
+
+<section id="arch">
+  <h2>6. 아키텍처 <small>설계안</small></h2>
+  <div class="flow"><pre class="mermaid">
+flowchart LR
+  U[대표 브라우저<br/>3D 관제실 · 2D 보드] -->|HTTPS| N[Netlify<br/>정적 사이트 + Functions]
+  N -->|Auth · Postgres · Storage · Realtime| S[(Supabase)]
+  N -->|Background Function<br/>오더 실행기| A[Anthropic API<br/>Opus 5.5 총괄·보고<br/>Sonnet 5.5 직원·리뷰]
+  N -->|MCP| K[AXKH<br/>get_context · search_nodes · add_knowledge]
+  N -->|MCP| M[Meeting Note<br/>find_action_items · summaries]
+  N -->|Checkout · Webhook| P[Stripe<br/>AX Billing 계정 · 상품 · 지침]
+  S -->|Realtime 이벤트| U
+  </pre></div>
+  <ul>
+    <li><b>프런트:</b> 현재 <code>office.html</code>의 UI 골격 유지, 3D 모듈만 교체. three r186.1 esbuild IIFE 번들(≈0.75MB) + GLTFLoader + SkeletonUtils. 캐릭터 Kenney Mini Characters(CC0, 4종 확보), 가구 Kenney Furniture Kit·KayKit(CC0, 46종 확보), 보조 RobotExpressive(CC0). 상태기계 IDLE→WALK→SIT→TYPE→TALK→DELIVER, 0.5m 격자 A* 경로, 카메라 디렉터, 낮/밤·바쁨 조명, 60명 60fps 예산. 애니메이션은 <b>실제 이벤트에만 바인딩</b>. 0단계로 아티팩트 CSP 스모크 테스트. 공수 ≈ 8 엔지니어-일.</li>
+    <li><b>총괄 두뇌:</b> CAMEL Workforce식 플래너(태스크 DAG) + 코디네이터(배정) + Magentic-One식 2중 장부(정체 감지→재계획) + OpenOPC식 리크루터(재배치 우선·신규 채용). 실패 복구 3단(재시도→재계획→재분해). Claude API 직접 호출(Tool Runner), 프롬프트 캐싱으로 역할 프로파일·회사 컨텍스트를 고정 프리픽스로. 긴 실행은 Netlify Background Function(최대 15분)으로 단계별 체크아웃, 상태는 Supabase, UI는 Realtime 구독 <span class="tag est">리스크: 15분 초과 시 별도 워커</span>.</li>
+    <li><b>데이터 모델:</b> orgs · offices · teams · staff(역할 프로파일: 입력/출력/도구/평가기준/모델/예산) · orders · tasks(DAG, 담당자 1명, 부모 링크) · runs · reviews(5-Color 회의록) · approvals · deliverables(버전) · usage_ledger · credits · audit_log · knowledge_links(AXKH 노드 url).</li>
+    <li><b>결제:</b> 같은 Stripe 계정 + AX Billing의 상품/계약 객체·지침(약관 동의, 오토페이, 카드 3%·$1,000↑ ACH). AX Billing API/MCP 완성 전엔 Voice Agent처럼 Stripe 직접 연동(회의 2026-09-30 선례), 완성 후 사용량 푸시로 전환.</li>
+    <li><b>지식(Company Brain):</b> 세션 시작 <code>get_context</code> → 총괄 시스템 프롬프트. 작업 중 <code>search_nodes(shared|mine)</code> + Meeting Note 근거. 결과 저장은 <code>add_knowledge</code> 2단계 확인(개인/팀공유·보안등급)을 UI 다이얼로그로. 오더별 intro/history/decision 기록.</li>
+    <li><b>보안:</b> 키는 서버 볼트만, 에이전트에 키 노출 금지, 직원별 도구 최소 권한, 외부 발송은 승인 게이트 뒤, 감사 로그 — 10/12 키 유출·VPS 사고를 반영한 1차 기능.</li>
+    <li><b>모델 호출:</b> 총괄·최종 보고 <code>claude-opus-5-5</code>(adaptive thinking, effort high), 직원·리뷰 <code>claude-sonnet-5-5</code>, 분류·태깅 <code>claude-haiku-5-5</code>. 스트리밍, 프롬프트 캐싱, 오더당 토큰 예산.</li>
+  </ul>
+</section>
+
+<section id="design">
+  <h2>7. 디자인 방향 <small>전문적·절제</small></h2>
+  <ul>
+    <li>참조 시스템: AX PRO 대시보드 디자인 명세(DM Sans/Noto Sans KR, 시맨틱 색 3계층, lucide 아이콘, 1200/1040/720 브레이크포인트) <span class="tag src">AXKH</span> — Eun Seok 팀장과 결을 맞춘다 <span class="tag est">협업 필요</span>.</li>
+    <li>3D: 깔끔한 로우폴리, 채도 낮은 사무실 팔레트에 팀 색만 악센트, 과장 없는 모션(걷기·앉기·전달·손들기), 낮/바쁨 조명. "관제실"이지 "게임"이 아니다. 주요 상태(작업 중·대기·승인 필요·완료)는 색·아이콘·3D 신호(모니터 발광·손들기·불 꺼짐)로 동시에 표현.</li>
+    <li>카피: 'AI'를 주어로 쓰지 않는다. 버튼은 결과를 말한다("승인하고 보내기", "계획 승인").</li>
+  </ul>
+</section>
+
+<section id="roadmap">
+  <h2>8. 구현 로드맵과 공수 <small>에이전트가 만들고, 사람은 계획·검수</small></h2>
+  <div class="tbl"><table>
+    <tr><th style="width:60px">단계</th><th style="width:110px">기간</th><th>내용</th></tr>
+    <tr><td class="num">0</td><td>0.5일</td><td>아티팩트 CSP 스모크 테스트(상대경로 스크립트·GLB) → 번들 방식 확정</td></tr>
+    <tr><td class="num">1</td><td>1.5~2주</td><td>움직이는 3D(번들·캐릭터·경로·디렉터) + 오케스트레이션 v2(계획 승인·채용·DAG·Red 리뷰·승인 보드·장부) — 아티팩트(구독 데모)로 배포</td></tr>
+    <tr><td class="num">2</td><td>2주</td><td>독립 서비스: Supabase Auth·스키마·Realtime, Netlify Functions 실행기, 서버측 Claude, Stripe 결제·플랜 게이트·크레딧</td></tr>
+    <tr><td class="num">3</td><td>2주</td><td>AXKH·Meeting Note 연동, 템플릿 5종, 5-Color 전체, 리플레이, DOCX/PPTX/XLSX 내보내기, 감사로그</td></tr>
+    <tr><td class="num">4</td><td>이후</td><td>한국: 원화 결제·세금계산서·한국어 UI, 2027 바우처 공급기업 등록; 온프렘 옵션</td></tr>
+  </table></div>
+</section>
+
+<section id="risks">
+  <h2>9. 리스크와 미확인</h2>
+  <div class="tbl"><table>
+    <tr><th style="width:45%">리스크</th><th>대응</th></tr>
+    <tr><td><b>구독 토큰의 제3자 사용 약관</b> — 유료 서비스가 API 키 대신 Claude 구독으로 고객을 대신 호출하는 것의 허용 여부 <span class="tag est">미확인</span></td><td>데모=구독(아티팩트), 유료=서버측 API 키로 설계. 약관 확인 후 재검토</td></tr>
+    <tr><td>한컴 노마디안 등 3D 메타포 범용화 <span class="tag est">2차 출처</span></td><td>시각이 아니라 산출물·승인·설명가능성·AXKH 지식으로 차별화, 레퍼런스 선점</td></tr>
+    <tr><td>정액제 마진(LLM 원가)</td><td>산출물 단위 크레딧, 예산 캡, 모델 라우팅, 캐싱; 실패 무과금은 유지하되 재시도 횟수 제한</td></tr>
+    <tr><td>결과물 품질·책임(환각·인용 오류)</td><td>출처 표기 강제, Red 리뷰 독립, 가정 수치 손들기, 외부 발송 승인 게이트</td></tr>
+    <tr><td>AX Billing API/MCP 미완성, 키 유출 사고 이력</td><td>Stripe 직접 연동 선행, 볼트·최소 권한·감사로그</td></tr>
+    <tr><td>개발 인력(핵심 개발자 1인 과부하)</td><td>이 세션(에이전트)이 구현, 팀은 계획·검수·디자인 결 맞추기</td></tr>
+    <tr><td>Netlify Background Function 15분 한도</td><td>단계 분할, 초과 시 소형 워커 검토</td></tr>
+    <tr><td>3D 성능·접근성</td><td>2D 모드 기본 제공, 모바일은 보고서·승인 뷰</td></tr>
+    <tr><td>"또 하나의 툴" 인식(Hermes·Notion Mission Control과 중복)</td><td>후속·흡수 제품임을 내부에 명시, BLG 도그푸딩을 첫 사례로</td></tr>
+  </table></div>
+</section>
+
+<section id="decisions">
+  <h2>10. 대표 결정이 필요한 것</h2>
+  <ol class="steps">
+    <li><b>요금제 숫자 (§4)</b><span>Starter $149 / Team $390 / Pilot 월 $2,500~4,000 / Managed $1,500~ — 이대로 갈지, 범위를 바꿀지.</span></li>
+    <li><b>첫 파일럿 2곳</b><span>iKamper + Olympus Spa로 바로 진단 인터뷰(SOP-02)를 잡을지.</span></li>
+    <li><b>제품 이름·도메인</b><span>가안 "AX Office" (AX Pro 네이밍 혼선이 회의록에 있어 확인 필요). 대안 "TecAce Office", "AI 오피스".</span></li>
+    <li><b>디자인 시스템</b><span>AX PRO 명세를 그대로 쓸지(Eun Seok 팀장 협업), 새로 잡을지.</span></li>
+    <li><b>구독 토큰 약관</b><span>유료 서비스에서도 구독 방식을 원하시는지 (§9 첫 줄).</span></li>
+    <li><b>영업 오너</b><span>진단 인터뷰·제안을 누가 하는지 (Hans / Juwha / Eun Seok).</span></li>
+  </ol>
+</section>
+
+<footer>근거 파일: scratchpad/research/opensource.md (37개 프로젝트, GitHub API 검증) · market.md (가격은 2차 출처·미확인 표시) · 3d-tech.md + assets/ · tecace-context.md (회의록) · axkh-core-insights.md. 저장소 사본: docs/ai-office/PLAN.md</footer>
+</main>
+</div>
