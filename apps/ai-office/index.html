@@ -225,7 +225,6 @@ dl.kv dd { margin: 0; }
         <option value="complex">품질 우선</option>
       </select>
     </label>
-    <button class="btn sm" id="keyBtn" type="button" hidden>API 키</button>
   </header>
 
   <main class="layout">
@@ -260,7 +259,7 @@ dl.kv dd { margin: 0; }
             <button class="btn primary" id="runBtn" type="button">총괄에게 지시</button>
           </div>
         </div>
-        <div id="keyPane" hidden></div>
+        <div id="modePane" hidden></div>
         <p class="section-title">진행 중인 업무</p>
         <div id="current"></div>
       </div>
@@ -455,14 +454,15 @@ const ai = {
       try { this.sample = await claude.use("sample"); } catch { this.sample = null; }
       if (this.sample) { this.kind = "claude"; return; }
     }
-    this.kind = lsGet("ai-office-key") ? "apikey" : "demo";
+    // Outside claude.ai there is no subscription to bill, so only the demo flow runs.
+    lsSet("ai-office-key", null); // purge any key an earlier version stored in this browser
+    this.kind = "demo";
   },
   async text(prompt, { onText, signal } = {}) {
     if (this.kind === "claude") {
       const r = await this.sample(prompt, { onText, signal, modelTier: tier, cache: false });
       return r.text;
     }
-    if (this.kind === "apikey") return apiCall(prompt, { onText, signal });
     throw { code: "demo" };
   },
   async json(prompt, { signal } = {}) {
@@ -472,19 +472,6 @@ const ai = {
     try { return JSON.parse(t.slice(a, b + 1)); } catch { throw { code: "invalid_json", text: t }; }
   },
 };
-const API_MODELS = { quick: "claude-haiku-5-5", default: "claude-sonnet-5-5", complex: "claude-opus-5-5" };
-async function apiCall(prompt, { onText, signal }) {
-  const res = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST", signal,
-    headers: { "content-type": "application/json", "x-api-key": lsGet("ai-office-key") || "", "anthropic-version": "2023-06-01", "anthropic-dangerous-direct-browser-access": "true" },
-    body: JSON.stringify({ model: API_MODELS[tier] || API_MODELS.default, max_tokens: 8000, messages: [{ role: "user", content: prompt }] }),
-  }).catch((e) => { throw { code: signal && signal.aborted ? "cancelled" : "upstream_error", message: String(e) }; });
-  if (!res.ok) { const body = await res.text().catch(() => ""); throw { code: res.status === 401 ? "bad_key" : res.status === 429 ? "rate_limited" : "upstream_error", message: body.slice(0, 300) }; }
-  const data = await res.json();
-  const text = (data.content || []).filter((c) => c.type === "text").map((c) => c.text).join("");
-  if (onText) onText({ text, delta: text });
-  return text;
-}
 function errCopy(e) {
   const c = (e && e.code) || "upstream_error";
   return ({
@@ -496,7 +483,6 @@ function errCopy(e) {
     invalid_json: "총괄의 업무 계획을 읽지 못했어요. 한 번 더 지시해 주세요.",
     bad_plan: "업무 계획이 비어 있었어요. 지시를 조금 더 구체적으로 적어 주세요.",
     prompt_too_large: "자료가 너무 길어요. 지시를 나눠서 맡겨 주세요.",
-    bad_key: "API 키가 올바르지 않아요. 키를 다시 입력해 주세요.",
     empty_completion: "답변이 비어 있었어요. 다시 지시해 주세요.",
     cancelled: "중지했어요.",
   })[c] || "연결이 잠시 끊겼어요. 다시 지시해 주세요.";
@@ -606,7 +592,7 @@ async function demoStream(text, onText, signal) {
   }
   return acc;
 }
-const demoOutput = (st, order) => `## ${st.title}\n\n> 데모 모드 결과예요. 실제 AI가 쓴 내용이 아니에요. claude.ai에서 이 페이지를 열면 실제 Claude가 작업해요.\n\n- 지시: ${order}\n- 담당: ${st.staffName} (${st.teamName})\n\n| 항목 | 초안 |\n|---|---|\n| 목표 | 확인 필요 |\n| 일정 | 1주차 조사 → 2주차 실행안 → 3주차 검토 (가정) |\n| 산출물 | 문서 1종, 체크리스트 1종 |\n`;
+const demoOutput = (st, order) => `## ${st.title}\n\n> 데모 모드 결과예요. 실제 AI가 쓴 내용이 아니에요. claude.ai에서 이 페이지를 열면 내 Claude 구독으로 실제 작업이 진행돼요.\n\n- 지시: ${order}\n- 담당: ${st.staffName} (${st.teamName})\n\n| 항목 | 초안 |\n|---|---|\n| 목표 | 확인 필요 |\n| 일정 | 1주차 조사 → 2주차 실행안 → 3주차 검토 (가정) |\n| 산출물 | 문서 1종, 체크리스트 1종 |\n`;
 
 /* ---------- run an order end to end ---------- */
 async function runOrder(order) {
@@ -640,7 +626,7 @@ async function runOrder(order) {
     task.status = "reviewing"; renderCurrent();
     office.setBusy("chief", "결과물을 모아 최종 보고서 작성 중");
     const onFinal = ({ text }) => { task.final = text; liveFinal(text); };
-    task.final = demo ? await demoStream(`## 한 줄 요약\n데모 모드로 흐름만 보여드렸어요.\n\n## 핵심 결과\n${task.steps.map((s) => `- ${s.staffName}: ${s.title}`).join("\n")}\n\n## 확인이 필요한 부분\n- 실제 결과를 받으려면 claude.ai에서 페이지를 열거나 API 키를 입력해 주세요.\n`, onFinal, ctl()) : await ai.text(finalPrompt(task), { onText: onFinal, signal: ctl() });
+    task.final = demo ? await demoStream(`## 한 줄 요약\n데모 모드로 흐름만 보여드렸어요.\n\n## 핵심 결과\n${task.steps.map((s) => `- ${s.staffName}: ${s.title}`).join("\n")}\n\n## 확인이 필요한 부분\n- 실제 결과를 받으려면 claude.ai에서 이 페이지를 여세요. 보는 사람의 Claude 구독으로 동작합니다.\n`, onFinal, ctl()) : await ai.text(finalPrompt(task), { onText: onFinal, signal: ctl() });
     task.status = "done";
     toast("총괄이 최종 보고를 올렸어요.");
   } catch (e) {
@@ -758,12 +744,10 @@ function renderHistory() {
 function renderMode() {
   const chip = $("#modeChip"), txt = $("#modeText");
   chip.classList.toggle("live", ai.kind !== "demo"); chip.classList.toggle("demo", ai.kind === "demo");
-  txt.textContent = ai.kind === "claude" ? "Claude 연결됨" : ai.kind === "apikey" ? "API 키로 연결됨" : "데모 모드";
-  $("#keyBtn").hidden = ai.kind === "claude";
-  $("#keyBtn").textContent = ai.kind === "apikey" ? "API 키 변경" : "API 키 입력";
-  const kp = $("#keyPane");
-  kp.hidden = ai.kind !== "demo";
-  if (ai.kind === "demo") kp.innerHTML = `<div class="keybox"><strong>지금은 데모 모드예요</strong><span class="note">이 페이지가 claude.ai 밖에서 열려 실제 AI 대신 예시 흐름을 보여줘요. claude.ai에서 열면 내 Claude 계정으로 바로 동작해요. 다른 곳에서 쓰려면 Anthropic API 키를 넣어 주세요(이 브라우저에만 저장).</span><button class="btn sm" type="button" id="keyBtn2">API 키 입력</button></div>`;
+  txt.textContent = ai.kind === "claude" ? "내 Claude 구독으로 연결됨" : "데모 모드";
+  const mp = $("#modePane");
+  mp.hidden = ai.kind !== "demo";
+  if (ai.kind === "demo") mp.innerHTML = `<div class="keybox"><strong>지금은 데모 모드예요</strong><span class="note">이 페이지가 claude.ai 밖에서 열려 실제 AI 대신 예시 흐름만 보여줘요. claude.ai에서 열면 별도 API 키 없이 보는 사람의 Claude 구독으로 총괄과 직원이 실제로 일합니다. 첫 지시 때 Claude 사용 허용을 묻는 창이 한 번 뜹니다.</span></div>`;
 }
 
 /* ---------- drawer ---------- */
@@ -1101,14 +1085,8 @@ $("#newTeamForm").addEventListener("submit", (e) => {
   $("#ntName").value = ""; $("#ntDesc").value = "";
   store.saveOffice(); office.build(); renderTeams(); toast(`${name}을(를) 만들었어요.`);
 });
-function showKeyForm() {
-  openDrawer("Anthropic API 키", `
-    <p class="note" style="margin:0">claude.ai 밖에서 이 페이지를 쓸 때만 필요해요. 키는 이 브라우저의 저장소에만 보관되고, Anthropic API로 직접 요청을 보낼 때만 쓰여요. 공용 PC에서는 넣지 마세요.</p>
-    <label class="note" for="keyInput">API 키</label><input type="text" id="keyInput" autocomplete="off" placeholder="sk-ant-..." value="">
-    <div class="row"><button class="btn primary sm" type="button" id="keySave">저장</button><button class="btn sm danger" type="button" id="keyClear">키 지우기</button></div>`);
-}
 document.addEventListener("click", (e) => {
-  const el = e.target.closest("[data-ex],[data-staff],[data-team],[data-open-task],[data-del-task],[data-fire],[data-del-team],[data-save-team],[data-reorder],#keyBtn,#keyBtn2,#keySave,#keyClear");
+  const el = e.target.closest("[data-ex],[data-staff],[data-team],[data-open-task],[data-del-task],[data-fire],[data-del-team],[data-save-team],[data-reorder]");
   if (!el) return;
   const d = el.dataset;
   if (d.ex != null) { $("#orderInput").value = EXAMPLES[+d.ex]; $("#orderInput").focus(); }
@@ -1132,9 +1110,7 @@ document.addEventListener("click", (e) => {
     const name = $("#etName").value.trim(); if (!name) return toast("팀 이름을 적어 주세요.");
     t.name = name.slice(0, 20); t.desc = $("#etDesc").value.trim().slice(0, 200);
     store.saveOffice(); office.build(); renderTeams(); $("#drawerTitle").textContent = t.name; toast("팀 정보를 저장했어요.");
-  } else if (el.id === "keyBtn" || el.id === "keyBtn2") showKeyForm();
-  else if (el.id === "keySave") { const k = $("#keyInput").value.trim(); if (!k) return toast("키를 붙여 넣어 주세요."); lsSet("ai-office-key", k); ai.kind = "apikey"; renderMode(); closeDrawer(); toast("API 키를 저장했어요."); }
-  else if (el.id === "keyClear") { lsSet("ai-office-key", null); ai.kind = "demo"; renderMode(); closeDrawer(); toast("API 키를 지웠어요."); }
+  }
 });
 
 /* ---------- boot ---------- */
