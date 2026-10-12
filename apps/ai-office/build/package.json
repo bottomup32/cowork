@@ -1,0 +1,1 @@
+{"name":"ai-office-build","private":true,"scripts":{"bundle":"esbuild entry.js --bundle --minify --format=iife --global-name=THREE --outfile=../vendor/three-office.js"},"dependencies":{"esbuild":"^0.28.2","three":"^0.186.1"}}

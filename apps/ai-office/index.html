@@ -94,7 +94,8 @@ button { cursor: pointer; }
 .bubble .typing i:nth-child(2) { animation-delay: .15s; } .bubble .typing i:nth-child(3) { animation-delay: .3s; }
 @keyframes blink { 50% { opacity: 1; } }
 .hud { position: absolute; left: 12px; bottom: 12px; display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.hud .hint { font-size: 11.5px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); padding: 4px 9px; border-radius: 6px; }
+.hud .hint { font-size: 11.5px; color: var(--muted); background: var(--surface); border: 1px solid var(--line); padding: 4px 9px; border-radius: 6px; display: inline-flex; align-items: center; gap: 5px; }
+.hud input[type="checkbox"] { margin: 0; accent-color: var(--accent); }
 .nogl { position: absolute; inset: 0; display: grid; place-items: center; padding: 24px; text-align: center; color: var(--muted); }
 
 .panel { min-width: 0; min-height: 0; display: flex; flex-direction: column; border-left: 1px solid var(--line); background: var(--surface); }
@@ -205,7 +206,7 @@ dl.kv dd { margin: 0; }
   .panel { border-left: 0; border-top: 1px solid var(--line); }
   .tabpane { overflow: visible; }
 }
-@media (max-width: 600px) { .hud .hint { display: none; } }
+@media (max-width: 600px) { .hud span.hint { display: none; } }
 @media (prefers-reduced-motion: reduce) {
   .bubble .typing i { animation: none; opacity: .8; }
 }
@@ -233,6 +234,7 @@ dl.kv dd { margin: 0; }
       <div id="labels"></div>
       <div class="hud">
         <button class="btn sm" id="resetView" type="button">시점 초기화</button>
+        <label class="hint" for="dirToggle"><input type="checkbox" id="dirToggle" checked> 자동 시점</label>
         <span class="hint">드래그: 회전 · 휠/핀치: 확대 · 우클릭/Shift 드래그: 이동 · 직원 클릭: 상세</span>
       </div>
     </section>
@@ -291,7 +293,8 @@ dl.kv dd { margin: 0; }
 </aside>
 <div class="toast" id="toast" hidden></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="vendor/three-office.js"></script>
+<script src="office3d.js"></script>
 <script>
 (() => {
 "use strict";
@@ -585,9 +588,9 @@ function demoPlan(order) {
 }
 async function demoStream(text, onText, signal) {
   let acc = "";
-  for (const chunk of text.match(/[\s\S]{1,18}/g)) {
+  for (const chunk of text.match(/[\s\S]{1,12}/g)) {
     if (signal && signal.aborted) throw { code: "cancelled", text: acc };
-    await new Promise((r) => setTimeout(r, 45));
+    await new Promise((r) => setTimeout(r, 85));
     acc += chunk; onText && onText({ text: acc, delta: chunk });
   }
   return acc;
@@ -607,7 +610,7 @@ async function runOrder(order) {
   office.setBusy("chief", "지시를 검토하고 업무를 나누는 중");
   const demo = ai.kind === "demo";
   try {
-    const plan = demo ? (await new Promise((r) => setTimeout(r, 900)), demoPlan(order)) : await ai.json(planPrompt(order), { signal: ctl() });
+    const plan = demo ? (await new Promise((r) => setTimeout(r, 1800)), demoPlan(order)) : await ai.json(planPrompt(order), { signal: ctl() });
     if (running.stopped) throw { code: "cancelled" };
     applyPlan(task, plan);
     store.saveOffice(); office.build(); renderTeams();
@@ -802,258 +805,13 @@ function confirmClick(btn, label) {
   return false;
 }
 
-/* ---------- 3D office ---------- */
-const office = (() => {
-  const canvas = $("#scene"), labelsEl = $("#labels"), stage = canvas.parentElement;
-  let renderer, scene, camera, root, floorMat, wallMat, deskMat, chairMat, darkMat, glassMat, hemi;
-  const chars = new Map(); // id -> {group, armL, armR, head, lamp, tag, bubble, anchor}
-  const labels = []; const anims = []; const busy = new Map(); const pickables = [];
-  const cam = { theta: 0.35, phi: 0.92, radius: 40, target: new THREE.Vector3() };
-  let home = { radius: 40, target: new THREE.Vector3() };
-  const css = (n) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || "#888";
-  let ok = true;
-
-  try {
-    renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
-    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-  } catch (e) {
-    ok = false;
-    stage.insertAdjacentHTML("beforeend", '<div class="nogl">이 기기에서는 3D 화면을 표시할 수 없어요. 오른쪽 패널로 모든 기능을 쓸 수 있어요.</div>');
-  }
-  if (ok) {
-    scene = new THREE.Scene();
-    camera = new THREE.PerspectiveCamera(38, 1, 0.5, 600);
-    hemi = new THREE.HemisphereLight(0xffffff, 0x8899aa, 0.75); scene.add(hemi);
-    const sun = new THREE.DirectionalLight(0xffffff, 0.75);
-    sun.position.set(18, 34, 22); sun.castShadow = true; sun.shadow.mapSize.set(2048, 2048);
-    Object.assign(sun.shadow.camera, { left: -45, right: 45, top: 45, bottom: -45, near: 1, far: 120 });
-    scene.add(sun); scene.add(sun.target);
-    floorMat = new THREE.MeshStandardMaterial({ roughness: 0.95 });
-    wallMat = new THREE.MeshStandardMaterial({ roughness: 0.9 });
-    deskMat = new THREE.MeshStandardMaterial({ roughness: 0.6 });
-    chairMat = new THREE.MeshStandardMaterial({ color: 0x3b4450, roughness: 0.7 });
-    darkMat = new THREE.MeshStandardMaterial({ color: 0x1f252d, roughness: 0.5 });
-    glassMat = new THREE.MeshStandardMaterial({ color: 0x9fd4e8, transparent: true, opacity: 0.18, roughness: 0.1, depthWrite: false });
-    const floor = new THREE.Mesh(new THREE.PlaneGeometry(400, 400), floorMat);
-    floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
-    root = new THREE.Group(); scene.add(root);
-    applyTheme();
-  }
-
-  const G = ok ? {
-    deskTop: new THREE.BoxGeometry(1.9, 0.08, 0.95), leg: new THREE.BoxGeometry(0.06, 0.72, 0.85),
-    monitor: new THREE.BoxGeometry(0.66, 0.4, 0.04), stand: new THREE.BoxGeometry(0.08, 0.16, 0.08), lamp: new THREE.BoxGeometry(0.66, 0.04, 0.05),
-    seat: new THREE.BoxGeometry(0.55, 0.08, 0.55), back: new THREE.BoxGeometry(0.55, 0.55, 0.06), pole: new THREE.CylinderGeometry(0.04, 0.04, 0.4, 8),
-    body: new THREE.CylinderGeometry(0.2, 0.27, 0.62, 16), head: new THREE.SphereGeometry(0.2, 20, 16), hair: new THREE.SphereGeometry(0.215, 20, 12, 0, Math.PI * 2, 0, Math.PI / 2.1),
-    arm: new THREE.BoxGeometry(0.09, 0.09, 0.42), pot: new THREE.CylinderGeometry(0.28, 0.22, 0.45, 12), leaf: new THREE.IcosahedronGeometry(0.45, 0),
-    doc: new THREE.OctahedronGeometry(0.18, 0),
-  } : null;
-
-  function applyTheme() {
-    if (!ok) return;
-    scene.background = new THREE.Color(css("--scene-bg"));
-    floorMat.color.set(css("--floor")); wallMat.color.set(css("--wall")); deskMat.color.set(css("--desk"));
-    const dark = matchMedia("(prefers-color-scheme: dark)").matches && document.documentElement.dataset.theme !== "light" || document.documentElement.dataset.theme === "dark";
-    hemi.intensity = dark ? 0.55 : 0.75;
-  }
-
-  function addLabel(html, cls, pos, offsetY) {
-    const el = document.createElement("div"); el.className = "lbl"; el.innerHTML = `<div class="${cls}">${html}</div>`;
-    labelsEl.appendChild(el); const l = { el, pos: pos.clone(), dy: offsetY || 0 }; labels.push(l); return l;
-  }
-  function makeDesk(x, z, big) {
-    const g = new THREE.Group(); g.position.set(x, 0, z);
-    const top = new THREE.Mesh(G.deskTop, deskMat); top.position.y = 0.76; top.castShadow = top.receiveShadow = true;
-    if (big) top.scale.set(1.5, 1, 1.15);
-    const l1 = new THREE.Mesh(G.leg, wallMat); l1.position.set(-0.88 * (big ? 1.5 : 1), 0.38, 0); const l2 = l1.clone(); l2.position.x *= -1;
-    const mon = new THREE.Mesh(G.monitor, darkMat); mon.position.set(0, 1.06, 0.15); mon.castShadow = true;
-    const st = new THREE.Mesh(G.stand, darkMat); st.position.set(0, 0.86, 0.15);
-    const lampMat = new THREE.MeshStandardMaterial({ color: 0x55606c, emissive: 0x000000 });
-    const lamp = new THREE.Mesh(G.lamp, lampMat); lamp.position.set(0, 1.28, 0.15);
-    g.add(top, l1, l2, mon, st, lamp); root.add(g);
-    return { g, lamp };
-  }
-  function makeChair(x, z) {
-    const g = new THREE.Group(); g.position.set(x, 0, z);
-    const seat = new THREE.Mesh(G.seat, chairMat); seat.position.y = 0.46; seat.castShadow = true;
-    const back = new THREE.Mesh(G.back, chairMat); back.position.set(0, 0.78, -0.26); back.castShadow = true;
-    const pole = new THREE.Mesh(G.pole, darkMat); pole.position.y = 0.22;
-    g.add(seat, back, pole); root.add(g); return g;
-  }
-  function makePerson(p, x, z, color, isChief) {
-    const g = new THREE.Group(); g.position.set(x, 0, z);
-    const bodyMat = new THREE.MeshStandardMaterial({ color, roughness: 0.7 });
-    const body = new THREE.Mesh(G.body, bodyMat); body.position.y = 0.82; body.castShadow = true;
-    const head = new THREE.Mesh(G.head, new THREE.MeshStandardMaterial({ color: p.skin || SKIN[0], roughness: 0.8 })); head.position.y = 1.33; head.castShadow = true;
-    const hair = new THREE.Mesh(G.hair, new THREE.MeshStandardMaterial({ color: p.hair || HAIR[0], roughness: 0.9 })); hair.position.y = 0.02; hair.rotation.x = -0.25; head.add(hair);
-    const armL = new THREE.Mesh(G.arm, bodyMat); armL.position.set(-0.24, 0.92, 0.2);
-    const armR = armL.clone(); armR.position.x = 0.24;
-    g.add(body, head, armL, armR);
-    if (isChief) g.scale.setScalar(1.12);
-    [body, head].forEach((m) => { m.userData.pick = { kind: "staff", id: p.id }; pickables.push(m); });
-    root.add(g);
-    return { g, head, armL, armR, body };
-  }
-  function makePlant(x, z) {
-    const pot = new THREE.Mesh(G.pot, wallMat); pot.position.set(x, 0.22, z); pot.castShadow = true;
-    const leaf = new THREE.Mesh(G.leaf, new THREE.MeshStandardMaterial({ color: 0x4f9a5c, roughness: 0.8, flatShading: true })); leaf.position.set(x, 0.85, z); leaf.castShadow = true;
-    root.add(pot, leaf);
-  }
-
-  function clear() {
-    while (root.children.length) {
-      const c = root.children.pop();
-      c.traverse((o) => { if (o.material && o.material !== floorMat && o.material !== wallMat && o.material !== deskMat && o.material !== chairMat && o.material !== darkMat && o.material !== glassMat) o.material.dispose(); });
-    }
-    labels.splice(0).forEach((l) => l.el.remove());
-    chars.clear(); pickables.length = 0;
-  }
-
-  const ZW = 10.4, ZD = 8.4, GAP = 2.6;
-  const SEATS = [];
-  for (let r = 0; r < 2; r++) for (let c = 0; c < 4; c++) SEATS.push({ x: -3.6 + c * 2.4, z: r === 0 ? -1.5 : 2.2 });
-
-  function build() {
-    if (!ok) return;
-    clear();
-    const n = state.teams.length;
-    const cols = n <= 1 ? 1 : n <= 4 ? 2 : 3;
-    const rows = Math.max(1, Math.ceil(n / cols));
-    const W = cols * ZW + (cols - 1) * GAP;
-    // chief's glass office at the back
-    const cz = -ZD / 2 - GAP - 3.6;
-    const cfloor = new THREE.Mesh(new THREE.PlaneGeometry(10, 6.4), new THREE.MeshStandardMaterial({ color: new THREE.Color(css("--floor")).lerp(new THREE.Color(css("--chief")), 0.18), roughness: 0.9 }));
-    cfloor.rotation.x = -Math.PI / 2; cfloor.position.set(0, 0.012, cz); cfloor.receiveShadow = true; root.add(cfloor);
-    const backWall = new THREE.Mesh(new THREE.BoxGeometry(10, 2.6, 0.15), wallMat); backWall.position.set(0, 1.3, cz - 3.2); backWall.castShadow = backWall.receiveShadow = true; root.add(backWall);
-    [-5, 5].forEach((sx) => { const gw = new THREE.Mesh(new THREE.BoxGeometry(0.06, 2.4, 6.4), glassMat); gw.position.set(sx, 1.2, cz); root.add(gw); });
-    [[-3.4, 3.2], [3.4, 3.2]].forEach(([gx, gz]) => { const gw = new THREE.Mesh(new THREE.BoxGeometry(3.2, 2.4, 0.06), glassMat); gw.position.set(gx, 1.2, cz + gz); root.add(gw); });
-    const cd = makeDesk(0, cz + 0.4, true); makeChair(0, cz - 0.6);
-    const chiefP = makePerson({ id: "chief", skin: SKIN[1], hair: HAIR[2] }, 0, cz - 0.55, css("--chief"), true);
-    makePlant(-4.2, cz - 2.5); makePlant(4.2, cz - 2.5);
-    const ca = new THREE.Vector3(0, 1.95, cz - 0.55);
-    chars.set("chief", { ...chiefP, lamp: cd.lamp, anchor: ca, tag: addLabel(`<b>${esc(CHIEF.name)}</b> 총괄`, "tag chief", ca), bubble: null, color: css("--chief") });
-    addLabel("총괄실", "sign", new THREE.Vector3(0, 2.9, cz - 3.2)).el.firstChild.style.background = css("--chief");
-
-    state.teams.forEach((t, i) => {
-      const col = i % cols, row = Math.floor(i / cols);
-      const zx = -W / 2 + ZW / 2 + col * (ZW + GAP), zz = row * (ZD + GAP);
-      const rug = new THREE.Mesh(new THREE.PlaneGeometry(ZW, ZD), new THREE.MeshStandardMaterial({ color: new THREE.Color(css("--floor")).lerp(new THREE.Color(t.color), 0.2), roughness: 0.95 }));
-      rug.rotation.x = -Math.PI / 2; rug.position.set(zx, 0.01, zz); rug.receiveShadow = true; rug.userData.pick = { kind: "team", id: t.id }; pickables.push(rug); root.add(rug);
-      const stripe = new THREE.Mesh(new THREE.BoxGeometry(ZW, 0.9, 0.14), new THREE.MeshStandardMaterial({ color: t.color, roughness: 0.8 }));
-      stripe.position.set(zx, 0.45, zz - ZD / 2 + 0.07); stripe.castShadow = stripe.receiveShadow = true; root.add(stripe);
-      const ms = staffOf(t.id);
-      addLabel(`${esc(t.name)}<small>${ms.length}/${MAX_STAFF}</small>`, "sign", new THREE.Vector3(zx, 1.35, zz - ZD / 2 + 0.07)).el.firstChild.style.background = t.color;
-      SEATS.forEach((s, k) => {
-        const x = zx + s.x, z = zz + s.z;
-        const d = makeDesk(x, z + 0.55); makeChair(x, z - 0.35);
-        const p = ms[k]; if (!p) return;
-        const ch = makePerson(p, x, z - 0.3, t.color);
-        const anchor = new THREE.Vector3(x, 1.85, z - 0.3);
-        chars.set(p.id, { ...ch, lamp: d.lamp, anchor, tag: addLabel(`<b>${esc(p.name)}</b> ${esc(p.role.length > 10 ? p.role.slice(0, 10) + "…" : p.role)}`, "tag", anchor), bubble: null, color: t.color });
-      });
-      makePlant(zx + ZW / 2 - 0.5, zz + ZD / 2 - 0.5);
-    });
-    busy.forEach((txt, id) => setBusy(id, txt));
-    const depth = rows * ZD + (rows - 1) * GAP;
-    home = { target: new THREE.Vector3(0, 0, (cz - 3.2 + depth - ZD / 2) / 2), radius: clamp(Math.max(W * 1.45, (depth + 10) * 1.4) + 8, 26, 160) };
-    if (!build.done) { resetView(); build.done = true; }
-  }
-  function resetView() { cam.theta = 0.35; cam.phi = 0.92; cam.radius = home.radius; cam.target.copy(home.target); }
-
-  function setBusy(id, text) {
-    if (text) busy.set(id, text); else busy.delete(id);
-    const c = chars.get(id); if (!c) return;
-    if (c.bubble) { c.bubble.el.remove(); labels.splice(labels.indexOf(c.bubble), 1); c.bubble = null; }
-    if (text) { c.bubble = addLabel(`${esc(text.length > 40 ? text.slice(0, 40) + "…" : text)}<span class="typing"><i></i><i></i><i></i></span>`, "bubble", c.anchor, 22); }
-    if (c.lamp) { c.lamp.material.emissive.set(text ? c.color : 0x000000); c.lamp.material.color.set(text ? c.color : 0x55606c); }
-  }
-  function clearBusy() { [...busy.keys()].forEach((id) => setBusy(id, null)); }
-  function handoff(from, to) {
-    if (!ok) return;
-    const a = chars.get(from), b = chars.get(to); if (!a || !b) return;
-    const m = new THREE.Mesh(G.doc, new THREE.MeshStandardMaterial({ color: b.color, emissive: b.color, emissiveIntensity: 0.6 }));
-    root.add(m); anims.push({ m, a: a.anchor.clone(), b: b.anchor.clone(), t0: performance.now(), dur: reduceMotion ? 1 : 1400 });
-  }
-
-  // camera controls
-  const pointers = new Map(); let lastPinch = 0, moved = 0, panMode = false;
-  function onDown(e) {
-    canvas.setPointerCapture(e.pointerId); pointers.set(e.pointerId, { x: e.clientX, y: e.clientY });
-    moved = 0; panMode = e.button === 2 || e.shiftKey;
-    if (pointers.size === 2) { const [p1, p2] = [...pointers.values()]; lastPinch = Math.hypot(p1.x - p2.x, p1.y - p2.y); }
-  }
-  function onMove(e) {
-    const p = pointers.get(e.pointerId); if (!p) return;
-    const dx = e.clientX - p.x, dy = e.clientY - p.y; p.x = e.clientX; p.y = e.clientY; moved += Math.abs(dx) + Math.abs(dy);
-    if (pointers.size === 2) {
-      const [p1, p2] = [...pointers.values()]; const d = Math.hypot(p1.x - p2.x, p1.y - p2.y);
-      if (lastPinch) cam.radius = clamp(cam.radius * (lastPinch / d), 8, 180); lastPinch = d; return;
-    }
-    if (panMode) {
-      const s = cam.radius * 0.0016;
-      const right = new THREE.Vector3(Math.cos(cam.theta), 0, -Math.sin(cam.theta)), fwd = new THREE.Vector3(Math.sin(cam.theta), 0, Math.cos(cam.theta));
-      cam.target.addScaledVector(right, -dx * s).addScaledVector(fwd, -dy * s);
-    } else { cam.theta -= dx * 0.006; cam.phi = clamp(cam.phi - dy * 0.005, 0.2, 1.4); }
-  }
-  function onUp(e) {
-    const wasClick = pointers.size === 1 && moved < 6;
-    pointers.delete(e.pointerId); if (pointers.size < 2) lastPinch = 0;
-    if (wasClick && e.type === "pointerup") pick(e);
-  }
-  const ray = ok ? new THREE.Raycaster() : null;
-  function pick(e) {
-    const r = canvas.getBoundingClientRect();
-    ray.setFromCamera(new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1), camera);
-    const hit = ray.intersectObjects(pickables, false)[0];
-    if (!hit) return;
-    const p = hit.object.userData.pick;
-    p.kind === "staff" ? openStaff(p.id) : openTeam(p.id);
-  }
-  if (ok) {
-    canvas.addEventListener("pointerdown", onDown); canvas.addEventListener("pointermove", onMove);
-    canvas.addEventListener("pointerup", onUp); canvas.addEventListener("pointercancel", onUp);
-    canvas.addEventListener("contextmenu", (e) => e.preventDefault());
-    canvas.addEventListener("wheel", (e) => { e.preventDefault(); cam.radius = clamp(cam.radius * (1 + Math.sign(e.deltaY) * Math.min(Math.abs(e.deltaY), 120) * 0.0012), 8, 180); }, { passive: false });
-    new ResizeObserver(resize).observe(stage); resize();
-    const mo = new MutationObserver(() => { applyTheme(); build(); }); mo.observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
-    matchMedia("(prefers-color-scheme: dark)").addEventListener("change", () => { applyTheme(); build(); });
-    requestAnimationFrame(loop);
-  }
-  function resize() {
-    const w = stage.clientWidth, h = stage.clientHeight; if (!w || !h) return;
-    renderer.setSize(w, h, false); camera.aspect = w / h; camera.updateProjectionMatrix();
-  }
-  const v = ok ? new THREE.Vector3() : null;
-  function loop(now) {
-    requestAnimationFrame(loop);
-    const t = now / 1000, sp = Math.sin(cam.phi);
-    camera.position.set(cam.target.x + cam.radius * sp * Math.sin(cam.theta), cam.target.y + cam.radius * Math.cos(cam.phi), cam.target.z + cam.radius * sp * Math.cos(cam.theta));
-    camera.lookAt(cam.target);
-    chars.forEach((c, id) => {
-      const working = busy.has(id);
-      const k = reduceMotion ? 0 : 1;
-      c.armL.rotation.x = working ? Math.sin(t * 18 + c.g.position.x) * 0.35 * k : 0;
-      c.armR.rotation.x = working ? Math.sin(t * 18 + 1.6 + c.g.position.x) * 0.35 * k : 0;
-      c.head.rotation.y = working ? Math.sin(t * 1.3 + c.g.position.z) * 0.25 * k : Math.sin(t * 0.4 + c.g.position.x) * 0.15 * k;
-      c.g.position.y = working ? Math.abs(Math.sin(t * 6)) * 0.03 * k : 0;
-    });
-    for (let i = anims.length - 1; i >= 0; i--) {
-      const a = anims[i]; const p = clamp((now - a.t0) / a.dur, 0, 1);
-      a.m.position.lerpVectors(a.a, a.b, p); a.m.position.y += Math.sin(p * Math.PI) * 3; a.m.rotation.y = p * 8;
-      if (p >= 1) { root.remove(a.m); a.m.material.dispose(); anims.splice(i, 1); }
-    }
-    renderer.render(scene, camera);
-    const w = stage.clientWidth, h = stage.clientHeight;
-    for (const l of labels) {
-      v.copy(l.pos).project(camera);
-      if (v.z > 1 || v.z < -1) { l.el.style.display = "none"; continue; }
-      l.el.style.display = "";
-      l.el.style.transform = `translate(${((v.x + 1) / 2) * w}px, ${((1 - v.y) / 2) * h - l.dy}px) translate(-50%, -100%)`;
-    }
-  }
-  return { build, setBusy, clearBusy, handoff, resetView, ok };
-})();
+/* ---------- 3D office (엔진은 office3d.js) ---------- */
+const office = (window.Office3D ? window.Office3D.create({
+  canvas: $("#scene"), labelsEl: $("#labels"), stage: $("#scene").parentElement,
+  getTeams: () => state.teams, staffOf, chief: CHIEF, maxStaff: MAX_STAFF, esc, reduceMotion,
+  onPick: (kind, id) => (kind === "staff" ? openStaff(id) : openTeam(id)),
+}) : null) || { ok: false, build() {}, setBusy() {}, clearBusy() {}, handoff() {}, hire() {}, resetView() {}, follow() {}, setDirector() {} };
+window.__office = office; // 디버그·테스트용
 
 /* ---------- events ---------- */
 document.querySelectorAll(".tabs button").forEach((b) => b.addEventListener("click", () => {
@@ -1067,6 +825,8 @@ $("#runBtn").addEventListener("click", () => runOrder($("#orderInput").value));
 $("#stopBtn").addEventListener("click", stopRun);
 $("#orderInput").addEventListener("keydown", (e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey)) { e.preventDefault(); runOrder(e.target.value); } });
 $("#resetView").addEventListener("click", () => office.resetView());
+$("#dirToggle").checked = !reduceMotion;
+$("#dirToggle").addEventListener("change", (e) => office.setDirector(e.target.checked));
 $("#tierSel").addEventListener("change", (e) => { tier = e.target.value; store.saveOffice(); });
 $("#drawerClose").addEventListener("click", closeDrawer);
 $("#drawerBg").addEventListener("click", closeDrawer);

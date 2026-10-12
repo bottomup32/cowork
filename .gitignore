@@ -12,3 +12,4 @@ output/playwright/
 *.log
 packages/db/src/generated/
 data/
+apps/ai-office/build/node_modules
