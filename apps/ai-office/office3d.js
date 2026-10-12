@@ -19,10 +19,23 @@
 
   /* ---------- 에셋 로더 (모델당 1회 로드, 캐시) ---------- */
   class Assets {
-    constructor() { this.loader = new T.GLTFLoader(); this.cache = new Map(); }
+    constructor() { this.loader = new T.GLTFLoader(); this.cache = new Map(); this.packP = null; }
+    // 모델은 assets/models.json(base64 팩) 하나로 받는다 — 정적 호스팅이 .glb를 서빙하지 않아도 된다
+    pack() {
+      if (!this.packP) this.packP = fetch(new URL(ASSETS + "models.json", document.baseURI).href).then((r) => { if (!r.ok) throw new Error("models.json " + r.status); return r.json(); });
+      return this.packP;
+    }
+    parseFromPack(path) {
+      return this.pack().then((pack) => {
+        const b64 = pack[path]; if (!b64) throw new Error("not in pack: " + path);
+        const bin = Uint8Array.from(atob(b64), (c) => c.charCodeAt(0)).buffer;
+        const base = new URL(ASSETS + path.slice(0, path.lastIndexOf("/") + 1), document.baseURI).href; // 외부 텍스처(colormap.png) 경로 기준
+        return new Promise((res, rej) => this.loader.parse(bin, base, res, rej));
+      });
+    }
     async load(path) {
       if (!this.cache.has(path)) {
-        this.cache.set(path, this.loader.loadAsync(new URL(ASSETS + path, document.baseURI).href).then((g) => {
+        this.cache.set(path, this.parseFromPack(path).then((g) => {
           // 바닥 y=0, XZ 중심이 원점이 되도록 보정값 계산
           const box = new T.Box3().setFromObject(g.scene);
           const size = new T.Vector3(); box.getSize(size);
